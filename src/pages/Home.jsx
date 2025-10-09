@@ -1,6 +1,13 @@
 import React, { useState } from "react";
 import faceuser from "../assets/user1.png";
-import { ChevronRight, ChevronDown, Bell } from "lucide-react";
+import {
+  ChevronRight,
+  ChevronDown,
+  Bell,
+  OctagonAlert,
+  BadgeCheck,
+  TriangleAlert,
+} from "lucide-react";
 import { motion } from "framer-motion";
 import notificationsData from "../data/dataNotification";
 import NotificationCard from "../components/NotificationCard";
@@ -18,6 +25,20 @@ const Home = () => {
     setNotifications((prev) =>
       prev.map((n) => (n.id === id ? { ...n, read: nextRead } : n))
     );
+  };
+
+  // Funcion para elegir color segun asistencia
+  const getBgClass = (asistencia) => {
+    switch ((asistencia || "").toLowerCase()) {
+      case "presente":
+        return "bg-green-100 border-l-3 border-green-500";
+      case "ausente":
+        return "bg-red-200 border-l-3 border-red-500";
+      case "retraso":
+        return "bg-orange-200 border-l-3 border-orange-500";
+      default:
+        return "bg-amber-200";
+    }
   };
 
   return (
@@ -49,7 +70,7 @@ const Home = () => {
         </motion.span>
       </header>
 
-      <section className="p-5 flex flex-col">
+      <section className="px-5 py-2 flex flex-col ">
         <h2 className="text-2xl font-semibold">Importantes</h2>
 
         <motion.div
@@ -85,24 +106,86 @@ const Home = () => {
         </button>
       </section>
 
-      <section className="p-5 flex flex-col">
+      <section className="px-5 flex flex-col ">
         <h2 className="text-2xl font-semibold">Hoy</h2>
-        <div className="">
-          {/* <div className="bg-amber-200 rounded-2xl p-2 mt-1.5 flex h-19 gap-2.5">
-            <h2>Luis</h2>
-            <h1>Ausente</h1>
-            <h2>matematicas </h2>
-            <span>horario</span>
-          </div> */}
+        <div className="flex flex-col gap-1.5 ">
           {Alumnos.map((alumno) => (
             <div
               key={alumno.id}
-              className="bg-amber-200 rounded-2xl p-2 mt-1.5 flex h-19 gap-2.5"
+              className={`${getBgClass(
+                alumno.materia.asistencia
+              )} rounded-2xl p-2 mt-1.5 flex h-19 gap-2.5 `}
             >
-              <h2>{alumno.name}</h2>
-              <h1>{alumno.materia.nombre}</h1>
-              <h2>{alumno.materia.asistencia} </h2>
-              <span>{alumno.materia.horario}</span>
+              <span>
+                {(() => {
+                  const estado =
+                    alumno?.materia?.asistencia?.toLowerCase?.() || "";
+                  return estado === "ausente" ? (
+                    <OctagonAlert className="w-7 h-7 text-red-600 mt-2" />
+                  ) : estado === "retraso" ? (
+                    <TriangleAlert className="w-7 h-7 text-orange-600 mt-2" />
+                  ) : (
+                    <BadgeCheck className="w-7 h-7 text-green-600 mt-2" />
+                  );
+                })()}
+              </span>
+              <div className="flex flex-col justify-center">
+                <div className="flex items-baseline-last gap-2 w-80 justify-between">
+                  <h2 className="text-lg font-semibold ">{alumno.name}</h2>
+                  <h2 className="text-lg text-black-700 mt-1 bg-white opacity-75 px-1 rounded-lg">
+                    {alumno.materia.asistencia}
+                  </h2>
+                </div>
+
+                <span className="text-xs text-zinc-500">
+                  <h1 className="text-sm text-zinc-600">
+                    {alumno.materia.nombre}
+                  </h1>
+                  {alumno.materia.horario}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+      <section className="px-5 flex flex-col mb-3">
+        <h2 className="text-2xl font-semibold">Hoy</h2>
+        <div className="flex flex-col gap-1.5 ">
+          {Alumnos.map((alumno) => (
+            <div
+              key={alumno.id}
+              className={`${getBgClass(
+                alumno.materia.asistencia
+              )} rounded-2xl p-2 mt-1.5 flex h-19 gap-2.5 `}
+            >
+              <span>
+                {(() => {
+                  const estado =
+                    alumno?.materia?.asistencia?.toLowerCase?.() || "";
+                  return estado === "ausente" ? (
+                    <OctagonAlert className="w-7 h-7 text-red-600 mt-2" />
+                  ) : estado === "retraso" ? (
+                    <TriangleAlert className="w-7 h-7 text-orange-600 mt-2" />
+                  ) : (
+                    <BadgeCheck className="w-7 h-7 text-green-600 mt-2" />
+                  );
+                })()}
+              </span>
+              <div className="flex flex-col justify-center">
+                <div className="flex items-baseline-last gap-2 w-80 justify-between">
+                  <h2 className="text-lg font-semibold ">{alumno.name}</h2>
+                  <h2 className="text-lg text-black-700 mt-1 bg-white opacity-75 px-1 rounded-lg">
+                    {alumno.materia.asistencia}
+                  </h2>
+                </div>
+
+                <span className="text-xs text-zinc-500">
+                  <h1 className="text-sm text-zinc-600">
+                    {alumno.materia.nombre}
+                  </h1>
+                  {alumno.materia.horario}
+                </span>
+              </div>
             </div>
           ))}
         </div>

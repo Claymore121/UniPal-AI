@@ -17,7 +17,10 @@ export default function BottomNav() {
   }
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white shadow-[0_-2px_10px_rgba(0,0,0,0.1)] flex justify-around items-center h-16">
+    <nav
+      className="sticky bottom-0 left-0 right-0 bg-white shadow-[0_-2px_10px_rgba(0,0,0,0.1)] 
+               flex justify-around items-center h-16 z-50"
+    >
       {/* Herramientas */}
       <NavLink
         to="/*"
