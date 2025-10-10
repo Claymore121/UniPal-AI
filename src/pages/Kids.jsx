@@ -7,7 +7,7 @@ const Kids = () => {
   const [open, setOpen] = useState(false);
 
   return (
-    <div>
+    <div className="w-full h-[100vh] overflow-y-auto">
       <header
         onClick={() => setOpen((v) => !v)}
         className="w-full h-[150px] p-4 bg-blue-500 text-white flex gap-3.5 rounded-b-3xl cursor-pointer select-none"
