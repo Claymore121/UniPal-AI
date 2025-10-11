@@ -13,10 +13,12 @@ import notificationsData from "../data/dataNotification";
 import NotificationCard from "../components/NotificationCard";
 import { Alumnos } from "../data/dataNotification";
 import NotificationIcon from "../components/NotificationIcon";
+import Modal from "../components/Modal";
 
 const Home = () => {
   const [open, setOpen] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
 
   // Estado local pensando en futura BD: simula update de "read"
   const [notifications, setNotifications] = useState(notificationsData);
@@ -46,7 +48,8 @@ const Home = () => {
     <div className="gap-4.5 flex flex-col mb-10">
       <header
         onClick={() => setOpen((v) => !v)}
-        className="w-full h-[150px] p-4 bg-blue-500 text-white flex gap-3.5 rounded-b-3xl cursor-pointer select-none"
+        // className="w-full h-[150px] p-4 bg-gradient-to-r from-[#295dfc] to-[#1f3fa9] via-[#5660cd] to-[#295dfc] bg-[length:200%_200%] animate-gradient text-white flex gap-3.5 rounded-b-3xl cursor-pointer select-none"
+        className="w-full h-[150px] p-4 bg-gradient-to-r from-[#295dfc] to-[#1f3fa9]  text-white flex gap-3.5 rounded-b-3xl cursor-pointer select-none"
       >
         <img
           src={faceuser}
@@ -67,10 +70,14 @@ const Home = () => {
           className="w-6 h-6 ml-auto mt-[70px] mr-5"
           aria-hidden="true"
         >
-          <Bell className="w-6 h-6" />
+          <Bell
+            className="w-6 h-6"
+            onClick={() => {
+              setIsOpen(true);
+            }}
+          />
         </motion.span>
       </header>
-
       <section className="px-5 py-2 flex flex-col ">
         <h2 className="text-2xl font-semibold">
           Importantes ({notifications.length})
@@ -108,7 +115,6 @@ const Home = () => {
           </motion.span>
         </button>
       </section>
-
       <section className="px-5 flex flex-col ">
         <h2 className="text-2xl font-semibold">Hoy ({Alumnos.length})</h2>
         <div className="flex flex-col gap-1.5 ">
@@ -172,6 +178,30 @@ const Home = () => {
           </div>
         </div>
       </section>
+      <Modal
+        isOpen={isOpen}
+        onClose={() => setIsOpen(false)}
+        title="🔔 Notificaciónes"
+      >
+        <div className=" overflow-y-hidden p-2 space-y-3">
+          {notifications.map((n) => (
+            <NotificationCard
+              key={n.id}
+              {...n}
+              onToggleRead={handleToggleRead}
+            />
+          ))}
+        </div>
+        <div className="mt-4 flex justify-end">
+          <button
+            onClick={() => setIsOpen(false)}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+          >
+            Cerrar
+          </button>
+        </div>
+      </Modal>
+      s
     </div>
   );
 };

@@ -5,6 +5,8 @@ import {
   Hammer,
   MoreHorizontal,
   Users,
+  House,
+  PencilLine,
 } from "lucide-react";
 import { useLocation } from "react-router-dom";
 
@@ -23,7 +25,7 @@ export default function BottomNav() {
     >
       {/* Herramientas */}
       <NavLink
-        to="/*"
+        to="/home"
         className={({ isActive }) =>
           [
             "flex flex-col items-center text-xs font-medium",
@@ -34,8 +36,8 @@ export default function BottomNav() {
           ].join(" ")
         }
       >
-        <Hammer size={22} />
-        <span>Herramientas</span>
+        <PencilLine size={22} />
+        <span>Tickets</span>
       </NavLink>
 
       {/* Estadísticas */}
@@ -51,7 +53,7 @@ export default function BottomNav() {
           ].join(" ")
         }
       >
-        <BarChart2 size={22} />
+        <House size={22} />
         <span>Home</span>
       </NavLink>
 
