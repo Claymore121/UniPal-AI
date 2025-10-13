@@ -25,13 +25,13 @@ export default function BottomNav() {
     >
       {/* Herramientas */}
       <NavLink
-        to="/home"
+        to="/tickets"
         className={({ isActive }) =>
           [
             "flex flex-col items-center text-xs font-medium",
             "transition-all duration-200 ease-out",
             isActive
-              ? "text-blue-600 scale-130 -translate-y-5 bg-sky-100 rounded-full p-2"
+              ? "text-orange-600 scale-130 -translate-y-5 bg-orange-100 rounded-full p-2"
               : "text-gray-500 opacity-80 hover:opacity-100",
           ].join(" ")
         }

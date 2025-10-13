@@ -1,4 +1,5 @@
 import { motion, AnimatePresence } from "framer-motion";
+import { X } from "lucide-react";
 
 export default function Modal({ isOpen, onClose, title, children }) {
   return (
@@ -28,9 +29,9 @@ export default function Modal({ isOpen, onClose, title, children }) {
                 <h2 className="text-lg font-semibold">{title}</h2>
                 <button
                   onClick={onClose}
-                  className="text-gray-500 hover:text-gray-800 transition"
+                  className="text-gray-500 hover:text-gray-800 transition mr-3 "
                 >
-                  ✕
+                  <X width={"40"} height={"40"} />
                 </button>
               </div>
 

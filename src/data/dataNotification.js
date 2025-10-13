@@ -84,6 +84,7 @@ export const notifications = [
 export const Alumnos = [
   {
     id: 1,
+    nivel: "Preparatoria",
     name: "Juan Perez",
     grade: "5th Grade",
     imgProfile: boyImg,
@@ -96,6 +97,7 @@ export const Alumnos = [
   },
   {
     id: 2,
+    nievl: "Preparatoria",
     name: "Maria Lopez",
     grade: "6th Grade",
     imgProfile: girlImg,
@@ -108,6 +110,7 @@ export const Alumnos = [
   },
   {
     id: 3,
+    nievl: "Secundaria",
     name: "Javiercin",
     grade: "2th Grade",
     imgProfile: boyImg,

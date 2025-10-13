@@ -4,6 +4,7 @@ import Home from "../pages/Home";
 import BottomNav from "../components/BottomNav";
 import Kids from "../pages/Kids";
 import RegisterPage from "../pages/Register/RegisterPage";
+import Tickets from "../pages/Tickets";
 
 export default function AppRouter() {
   return (
@@ -15,6 +16,8 @@ export default function AppRouter() {
         <Route path="/Login" element={<LoginPage />} />
         <Route path="/kids" element={<Kids />} />
         <Route path="/RegisterPage" element={<RegisterPage />} />
+        <Route path="/tickets" element={<Tickets />} />
+
         {/* Ruta para cuando no se encuentra ninguna coincidencia */}
         <Route path="*" element={<h1>404 - Página no encontrada</h1>} />
       </Routes>
