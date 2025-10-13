@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { motion } from "framer-motion";
-import { SquarePlus, Info } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { SquarePlus, ChevronDown } from "lucide-react";
 import Modal from "../components/Modal";
 import boyImg from "../assets/boy1.png";
 import girlImg from "../assets/girl1.png";
@@ -9,12 +9,10 @@ import { Alumnos } from "../data/dataNotification";
 const Kids = () => {
   const [open, setOpen] = useState(false);
   const [isOpenAddkid, setIsOpenAddkid] = useState(false);
-  const [isOpenInfoKid, setisOpenInfoKid] = useState(false);
+  const [expandedKidId, setExpandedKidId] = useState(null);
 
-  // 👇 Ahora Alumnos es un estado local, editable
   const [alumnos, setAlumnos] = useState(Alumnos);
 
-  // Inputs del formulario
   const [nivel, setNivel] = useState("");
   const [nombre, setNombre] = useState("");
   const [grado, setGrado] = useState("");
@@ -22,29 +20,41 @@ const Kids = () => {
   const [numeroControlAlumno, setNumeroControlAlumno] = useState("");
   const [sexo, setSetsexo] = useState("");
 
-  // 👇 Función para agregar un nuevo alumno
   const handleAddAlumno = (e) => {
     e.preventDefault();
-
     if (!nombre || !nivel || !grado) return;
 
     const nuevoAlumno = {
-      id: Date.now(), // ID único
+      id: Date.now(),
       nivel: nivel === "secu" ? "Secundaria" : "Preparatoria",
       name: nombre,
       grade: grado,
       imgProfile: sexo === "mujer" ? girlImg : boyImg,
       clave: nivel === "secu" ? claveAlumno : undefined,
       numeroControl: nivel === "prepa" ? numeroControlAlumno : undefined,
-      materia: {
-        nombre: "Sin asignar",
-        horario: "Pendiente",
-        maestro: "Pendiente",
-        asistencia: "Pendiente",
-      },
+      materias: [
+        {
+          nombre: "Matemáticas",
+          horario: "Lunes y Miércoles 10:00 - 11:30",
+          maestro: "Prof. Ramírez",
+          asistencia: "85%",
+        },
+        {
+          nombre: "Inglés",
+          horario: "Martes y Jueves 09:00 - 10:30",
+          maestro: "Profa. López",
+          asistencia: "90%",
+        },
+        {
+          nombre: "Ciencias",
+          horario: "Lunes y Miércoles 11:00 - 12:30",
+          maestro: "Prof. Villacasas",
+          asistencia: "80%",
+        },
+      ],
     };
 
-    setAlumnos((prev) => [...prev, nuevoAlumno]); // agrega a la lista
+    setAlumnos((prev) => [...prev, nuevoAlumno]);
     setNivel("");
     setNombre("");
     setGrado("");
@@ -53,15 +63,18 @@ const Kids = () => {
     setIsOpenAddkid(false);
   };
 
+  const toggleExpand = (id) => {
+    setExpandedKidId((prev) => (prev === id ? null : id));
+  };
+
   return (
     <div className="w-full h-[100vh] overflow-y-auto">
       <header
         onClick={() => setOpen((v) => !v)}
-        className="w-full h-[150px] p-4 bg-gradient-to-r from-[#295dfc] to-[#1f3fa9]  text-white flex gap-3.5 rounded-b-3xl cursor-pointer select-none"
+        className="w-full h-[150px] p-4 bg-gradient-to-r from-[#295dfc] to-[#1f3fa9] text-white flex gap-3.5 rounded-b-3xl cursor-pointer select-none"
       >
         <div>
           <h2 className="text-2xl mt-[50px] leading-none">Hijos</h2>
-
           <div className="mt-3 flex gap-1.5">
             <div className="text-white p-1.5 bg-green-600 rounded-lg">
               <h2>Secundaria</h2>
@@ -69,8 +82,6 @@ const Kids = () => {
             <div className="text-white p-1.5 bg-green-600 rounded-lg">
               <h2>Preparatoria</h2>
             </div>
-
-            <div />
           </div>
         </div>
 
@@ -81,7 +92,7 @@ const Kids = () => {
           aria-hidden="true"
         >
           <SquarePlus
-            className="w-6 h-6  cursor-pointer"
+            className="w-6 h-6 cursor-pointer"
             onClick={(e) => {
               e.stopPropagation();
               setIsOpenAddkid(true);
@@ -94,44 +105,93 @@ const Kids = () => {
         <h2 className="text-2xl font-semibold">Mis hijos</h2>
         <div className="mt-3 rounded-2xl border border-gray-300 overflow-hidden">
           <div className="h-full overflow-auto p-2 space-y-3">
-            {alumnos.map((alumno) => (
-              <div
-                key={alumno.id}
-                className="flex justify-between items-center p-3 rounded-lg border-l-4 shadow-sm transition hover:shadow-md bg-gray-50"
-              >
-                <div className="flex items-start gap-2">
-                  <div className="flex-1 min-w-0">
-                    <img
-                      src={alumno.imgProfile}
-                      alt="perfil"
-                      width={"50"}
-                      height={"50"}
-                      className="rounded-full mb-2"
-                    />
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-semibold text-blue-600">
-                        {alumno.name}
-                      </h3>
+            {alumnos.map((alumno) => {
+              const isExpanded = expandedKidId === alumno.id;
+              return (
+                <div
+                  key={alumno.id}
+                  className="rounded-lg border-l-4 shadow-sm bg-gray-50 cursor-pointer overflow-hidden transition hover:shadow-md"
+                  onClick={() => toggleExpand(alumno.id)}
+                >
+                  <div className="flex justify-between items-center p-3">
+                    <div className="flex items-center gap-3">
+                      <img
+                        src={alumno.imgProfile}
+                        alt="perfil"
+                        width={50}
+                        height={50}
+                        className="rounded-full"
+                      />
+                      <div>
+                        <h3 className="font-semibold text-blue-600">
+                          {alumno.name}
+                        </h3>
+                        <p className="text-sm text-gray-700">
+                          Nivel: {alumno.nivel}
+                        </p>
+                        <p className="text-sm text-gray-700">
+                          Grado: {alumno.grade}
+                        </p>
+                      </div>
                     </div>
-
-                    <p className="text-sm text-gray-700 mt-1">
-                      Nivel: {alumno.nivel}
-                    </p>
-                    <p className="text-sm text-gray-700">
-                      Grado: {alumno.grade}
-                    </p>
+                    <motion.div
+                      animate={{ rotate: isExpanded ? 180 : 0 }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="w-5 h-5 text-gray-600"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M19 9l-7 7-7-7"
+                        />
+                      </svg>
+                    </motion.div>
                   </div>
+
+                  <AnimatePresence>
+                    {isExpanded && (
+                      <motion.div
+                        layout
+                        initial={{ opacity: 0, y: -5 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -5 }}
+                        transition={{ duration: 0.35, ease: "easeInOut" }}
+                        className="px-5 pb-4 bg-white border-t border-gray-200 text-sm"
+                      >
+                        {alumno.materias.map((mat, index) => (
+                          <div
+                            key={index}
+                            className={`p-2 rounded-lg text-white mb-3 ${
+                              mat.nombre.toLowerCase() === "matemáticas"
+                                ? "bg-red-200 border-2 border-red-400 text-black"
+                                : mat.nombre.toLowerCase() === "inglés"
+                                ? "bg-yellow-100 border-2 border-yellow-400 text-black"
+                                : mat.nombre.toLowerCase() === "ciencias"
+                                ? "bg-green-200 border-2 border-green-400 text-black"
+                                : "bg-gray-300"
+                            }`}
+                          >
+                            <p className="text-black">
+                              <strong>{mat.nombre}</strong> - {mat.horario}
+                            </p>
+                            <p className="text-black">
+                              Asistencia: {mat.asistencia}
+                            </p>
+                          </div>
+                        ))}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
-                <div className="mr-4">
-                  <Info
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setisOpenInfoKid(true);
-                    }}
-                  ></Info>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </section>
@@ -143,16 +203,10 @@ const Kids = () => {
         title="🟩 Agregar Hijo"
       >
         <form className="flex flex-col gap-3" onSubmit={handleAddAlumno}>
-          <label htmlFor="nombre" className="text-[20px]">
-            Sexo:
-          </label>
+          <label className="text-[20px]">Sexo:</label>
           <div className="flex items-center gap-6">
-            <label
-              htmlFor="nivel-secu"
-              className="flex items-center gap-2 cursor-pointer"
-            >
+            <label className="flex items-center gap-2 cursor-pointer">
               <input
-                id="sexoAlumno"
                 type="radio"
                 name="sexo"
                 value="hombre"
@@ -162,13 +216,8 @@ const Kids = () => {
               />
               <span>Hombre</span>
             </label>
-
-            <label
-              htmlFor="nivel-prepa"
-              className="flex items-center gap-2 cursor-pointer"
-            >
+            <label className="flex items-center gap-2 cursor-pointer">
               <input
-                id="sexoAlumno"
                 type="radio"
                 name="sexo"
                 value="mujer"
@@ -179,11 +228,9 @@ const Kids = () => {
               <span>Mujer</span>
             </label>
           </div>
-          <label htmlFor="nombre" className="text-[20px]">
-            Nombre Completo del Alumno
-          </label>
+
+          <label className="text-[20px]">Nombre Completo del Alumno</label>
           <input
-            id="nombre"
             type="text"
             className="border rounded p-2"
             value={nombre}
@@ -194,12 +241,8 @@ const Kids = () => {
 
           <span className="text-[20px]">Nivel:</span>
           <div className="flex items-center gap-6">
-            <label
-              htmlFor="nivel-secu"
-              className="flex items-center gap-2 cursor-pointer"
-            >
+            <label className="flex items-center gap-2 cursor-pointer">
               <input
-                id="nivel-secu"
                 type="radio"
                 name="nivel"
                 value="secu"
@@ -209,13 +252,8 @@ const Kids = () => {
               />
               <span>Secundaria</span>
             </label>
-
-            <label
-              htmlFor="nivel-prepa"
-              className="flex items-center gap-2 cursor-pointer"
-            >
+            <label className="flex items-center gap-2 cursor-pointer">
               <input
-                id="nivel-prepa"
                 type="radio"
                 name="nivel"
                 value="prepa"
@@ -227,12 +265,8 @@ const Kids = () => {
             </label>
           </div>
 
-          <label htmlFor="grado" className="text-[20px]">
-            Grado
-          </label>
+          <label className="text-[20px]">Grado</label>
           <select
-            id="grado"
-            name="grado"
             className="border rounded p-2 w-full"
             disabled={!nivel}
             value={grado}
@@ -242,7 +276,6 @@ const Kids = () => {
             <option value="" disabled>
               {nivel ? "Selecciona un grado" : "Selecciona primero el nivel"}
             </option>
-
             {nivel === "secu" && (
               <>
                 <option value="1ro Secundaria">1ro Secundaria</option>
@@ -250,7 +283,6 @@ const Kids = () => {
                 <option value="3ro Secundaria">3ro Secundaria</option>
               </>
             )}
-
             {nivel === "prepa" && (
               <>
                 <option value="1ro Preparatoria">1ro Preparatoria</option>
@@ -262,11 +294,8 @@ const Kids = () => {
 
           {nivel === "secu" && (
             <>
-              <label htmlFor="Clave" className="text-[20px]">
-                Clave del alumno
-              </label>
+              <label className="text-[20px]">Clave del alumno</label>
               <input
-                id="Clave"
                 type="text"
                 className="border rounded p-2"
                 value={claveAlumno}
@@ -279,11 +308,8 @@ const Kids = () => {
 
           {nivel === "prepa" && (
             <>
-              <label htmlFor="NumeroDeControl" className="text-[20px]">
-                Número de Control
-              </label>
+              <label className="text-[20px]">Número de Control</label>
               <input
-                id="NumeroDeControl"
                 type="text"
                 className="border rounded p-2"
                 value={numeroControlAlumno}
@@ -301,15 +327,6 @@ const Kids = () => {
             Agregar
           </button>
         </form>
-      </Modal>
-
-      {/* modal para la info del hijo */}
-      <Modal
-        isOpen={isOpenInfoKid}
-        onClose={() => setisOpenInfoKid(false)}
-        title="🟩 Agregar Hijo"
-      >
-        <h2>hola</h2>
       </Modal>
     </div>
   );

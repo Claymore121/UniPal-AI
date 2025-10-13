@@ -5,6 +5,7 @@ import BottomNav from "../components/BottomNav";
 import Kids from "../pages/Kids";
 import RegisterPage from "../pages/Register/RegisterPage";
 import Tickets from "../pages/Tickets";
+import CalendarioAsistencias from "../components/CalendarioAsistencias";
 
 export default function AppRouter() {
   return (
@@ -17,6 +18,7 @@ export default function AppRouter() {
         <Route path="/kids" element={<Kids />} />
         <Route path="/RegisterPage" element={<RegisterPage />} />
         <Route path="/tickets" element={<Tickets />} />
+        <Route path="/asistencias" element={<CalendarioAsistencias />} />
 
         {/* Ruta para cuando no se encuentra ninguna coincidencia */}
         <Route path="*" element={<h1>404 - Página no encontrada</h1>} />

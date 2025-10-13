@@ -76,7 +76,7 @@ export default function BottomNav() {
 
       {/* Asistencias */}
       <NavLink
-        to="/*"
+        to="/asistencias"
         className={({ isActive }) =>
           [
             "flex flex-col items-center text-xs font-medium",

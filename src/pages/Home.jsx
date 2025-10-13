@@ -31,7 +31,6 @@ const Home = () => {
     );
   };
 
-  // Funcion para elegir color segun asistencia
   const getBgClass = (asistencia) => {
     switch ((asistencia || "").toLowerCase()) {
       case "presente":
@@ -125,45 +124,50 @@ const Home = () => {
       <section className="px-5 flex flex-col ">
         <h2 className="text-2xl font-semibold">Hoy ({Alumnos.length})</h2>
         <div className="flex flex-col gap-1.5 ">
-          {Alumnos.map((alumno) => (
-            <div
-              key={alumno.id}
-              className={`${getBgClass(
-                alumno.materia.asistencia
-              )} rounded-2xl p-2 mt-1.5 flex h-19 gap-2.5 `}
-            >
-              <span>
-                {(() => {
-                  const estado =
-                    alumno?.materia?.asistencia?.toLowerCase?.() || "";
-                  return estado === "ausente" ? (
-                    <OctagonAlert className="w-7 h-7 text-red-600 mt-2" />
-                  ) : estado === "retraso" ? (
-                    <TriangleAlert className="w-7 h-7 text-orange-600 mt-2" />
-                  ) : (
-                    <BadgeCheck className="w-7 h-7 text-green-600 mt-2" />
-                  );
-                })()}
-              </span>
-              <div className="flex flex-col justify-center">
-                <div className="flex items-baseline-last gap-2 w-80 justify-between">
-                  <h2 className="text-lg font-semibold ">{alumno.name}</h2>
-                  <h2 className="text-lg text-black-700 mt-1 bg-white opacity-75 px-1 rounded-lg">
-                    {alumno.materia.asistencia}
-                  </h2>
-                </div>
+          {Alumnos.map((alumno) => {
+            const primeraMateria = alumno.materias?.[0]; 
+            if (!primeraMateria) return null;
 
-                <span className="text-xs text-zinc-500">
-                  <h1 className="text-sm text-zinc-600">
-                    {alumno.materia.nombre}
-                  </h1>
-                  {alumno.materia.horario}
+            return (
+              <div
+                key={alumno.id}
+                className={`${getBgClass(
+                  primeraMateria.asistencia
+                )} rounded-2xl p-2 mt-1.5 flex h-19 gap-2.5 `}
+              >
+                <span>
+                  {(() => {
+                    const estado =
+                      primeraMateria?.asistencia?.toLowerCase?.() || "";
+                    return estado === "ausente" ? (
+                      <OctagonAlert className="w-7 h-7 text-red-600 mt-2" />
+                    ) : estado === "retraso" ? (
+                      <TriangleAlert className="w-7 h-7 text-orange-600 mt-2" />
+                    ) : (
+                      <BadgeCheck className="w-7 h-7 text-green-600 mt-2" />
+                    );
+                  })()}
                 </span>
+                <div className="flex flex-col justify-center w-full">
+                  <div className="flex items-baseline-last gap-2 justify-between">
+                    <h2 className="text-lg font-semibold ">{alumno.name}</h2>
+                    <h2 className="text-lg text-black-700 mt-1 bg-white opacity-75 px-1 rounded-lg">
+                      {primeraMateria.asistencia}
+                    </h2>
+                  </div>
+                  <span className="text-xs text-zinc-500">
+                    <h1 className="text-sm text-zinc-600">
+                      {primeraMateria.nombre}
+                    </h1>
+                    {primeraMateria.horario}
+                  </span>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </section>
+
       <section className="px-5 flex flex-col mb-3 ">
         <h2 className="text-2xl font-semibold">Proximos (4)</h2>
         <div className=" grid grid-cols-2 gap-1 mt-3">

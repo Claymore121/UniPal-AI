@@ -84,42 +84,54 @@ export const notifications = [
 export const Alumnos = [
   {
     id: 1,
-    nivel: "Preparatoria",
-    name: "Juan Perez",
-    grade: "5th Grade",
+    nivel: "Secundaria",
+    name: "Luis",
+    grade: "2do Secundaria",
     imgProfile: boyImg,
-    materia: {
-      nombre: "matematicas",
-      horario: "8:00 - 9:00",
-      maestro: "mirna",
-      asistencia: "Ausente",
-    },
+    materias: [
+      {
+        nombre: "Matemáticas",
+        horario: "10:00 - 11:00",
+        maestro: "Prof. Ramírez",
+        asistencia: "Presente",
+      },
+      {
+        nombre: "Inglés",
+        horario: "11:00 - 12:00",
+        maestro: "Profa. López",
+        asistencia: "Ausente",
+      },
+    ],
   },
   {
     id: 2,
-    nievl: "Preparatoria",
-    name: "Maria Lopez",
-    grade: "6th Grade",
+    nivel: "Preparatoria",
+    name: "Ana",
+    grade: "1ro Preparatoria",
     imgProfile: girlImg,
-    materia: {
-      nombre: "ingles",
-      horario: "9:00 - 10:00",
-      maestro: "pepito",
-      asistencia: "Presente",
-    },
+    materias: [
+      {
+        nombre: "Ciencias",
+        horario: "09:00 - 10:00",
+        maestro: "Prof. Villacasas",
+        asistencia: "Retraso",
+      },
+    ],
   },
   {
     id: 3,
-    nievl: "Secundaria",
-    name: "Javiercin",
-    grade: "2th Grade",
-    imgProfile: boyImg,
-    materia: {
-      nombre: "ciencias",
-      horario: "11:00 - 12:00",
-      maestro: "villacasas",
-      asistencia: "Retraso",
-    },
+    nivel: "Preparatoria",
+    name: "javiercin",
+    grade: "3ro Preparatoria",
+    imgProfile: girlImg,
+    materias: [
+      {
+        nombre: "Ciencias",
+        horario: "09:00 - 10:00",
+        maestro: "Prof. Villacasas",
+        asistencia: "Retraso",
+      },
+    ],
   },
 ];
 

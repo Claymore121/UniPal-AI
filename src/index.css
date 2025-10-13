@@ -15,3 +15,32 @@
 .animate-gradient {
   animation: gradient 7s ease infinite;
 }
+
+/* calendario */
+.react-calendar {
+  background-color: white;
+}
+
+.react-calendar__navigation button {
+  @apply text-gray-700 font-semibold hover:bg-gray-100 rounded-lg;
+}
+
+.react-calendar__month-view__weekdays {
+  @apply text-gray-500 text-sm font-medium;
+}
+
+.react-calendar__tile {
+  @apply h-10 w-10 flex items-center justify-center text-sm rounded-lg transition duration-200;
+}
+
+.react-calendar__tile:hover {
+  @apply bg-gray-200;
+}
+
+.react-calendar__tile--active {
+  @apply bg-blue-500 text-white;
+}
+
+.react-calendar__navigation button:disabled {
+  @apply text-gray-300;
+}
