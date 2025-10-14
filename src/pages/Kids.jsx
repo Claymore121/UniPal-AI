@@ -171,7 +171,7 @@ const Kids = () => {
                             className={`p-2 rounded-lg text-white mb-3 ${
                               mat.nombre.toLowerCase() === "matemáticas"
                                 ? "bg-red-200 border-2 border-red-400 text-black"
-                                : mat.nombre.toLowerCase() === "inglés"
+                                : mat.nombre.toLowerCase() === "ingles"
                                 ? "bg-yellow-100 border-2 border-yellow-400 text-black"
                                 : mat.nombre.toLowerCase() === "ciencias"
                                 ? "bg-green-200 border-2 border-green-400 text-black"

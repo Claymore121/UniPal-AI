@@ -96,7 +96,7 @@ export const Alumnos = [
         asistencia: "Presente",
       },
       {
-        nombre: "Inglés",
+        nombre: "Ingles",
         horario: "11:00 - 12:00",
         maestro: "Profa. López",
         asistencia: "Ausente",
@@ -126,10 +126,25 @@ export const Alumnos = [
     imgProfile: girlImg,
     materias: [
       {
-        nombre: "Ciencias",
+        nombre: "ingles",
         horario: "09:00 - 10:00",
         maestro: "Prof. Villacasas",
         asistencia: "Retraso",
+      },
+    ],
+  },
+  {
+    id: 4,
+    nivel: "Secundaria",
+    name: "Renesito",
+    grade: "1ro Secundaria",
+    imgProfile: boyImg,
+    materias: [
+      {
+        nombre: "Ciencias",
+        horario: "09:00 - 10:00",
+        maestro: "Prof. Villacasas",
+        asistencia: "Ausente",
       },
     ],
   },

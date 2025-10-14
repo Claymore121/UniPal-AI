@@ -25,7 +25,7 @@ export default function BottomNav() {
     >
       {/* Herramientas */}
       <NavLink
-        to="/tickets"
+        to="/calificaciones"
         className={({ isActive }) =>
           [
             "flex flex-col items-center text-xs font-medium",
