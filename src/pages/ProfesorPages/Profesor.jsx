@@ -15,6 +15,7 @@ import {
   BarChart3,
   FileText,
 } from "lucide-react";
+import { Navigate, useNavigate } from "react-router-dom";
 
 // --- Datos de ejemplo ---
 const classrooms = [
@@ -129,7 +130,7 @@ function Card({ children, className = "" }) {
     </div>
   );
 }
-
+// probando ramas y esquemas privados
 function CardHeader({ children, className = "" }) {
   return <div className={`mb-3 ${className} `}>{children}</div>;
 }
@@ -257,7 +258,7 @@ export default function TeacherDashboard() {
   const topStudents = useMemo(() => {
     return [...students].sort((a, b) => b.average - a.average).slice(0, 3);
   }, []);
-
+  const navigate = useNavigate();
   return (
     <div className="min-h-screen bg-zinc-50 text-zinc-900  ">
       {/* Header */}
@@ -280,6 +281,9 @@ export default function TeacherDashboard() {
                 src="/src/assets/profesor1.png"
                 alt=""
                 className=" bg-cover h-full w-full "
+                onClick={() => {
+                  navigate("/login");
+                }}
               />
             </div>
           </div>
