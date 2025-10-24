@@ -12,7 +12,7 @@ import { useLocation } from "react-router-dom";
 
 export default function BottomNav() {
   const location = useLocation();
-  const hiddenRoutes = ["/login", "/register"];
+  const hiddenRoutes = ["/login", "/register", "/Profesor"];
 
   if (hiddenRoutes.includes(location.pathname)) {
     return null; // No mostrar nada
@@ -37,27 +37,9 @@ export default function BottomNav() {
         }
       >
         <PencilLine size={22} />
-        <span>Tickets</span>
+        <span>Calificaciones</span>
       </NavLink>
 
-      {/* Estadísticas */}
-      <NavLink
-        to="/Home"
-        className={({ isActive }) =>
-          [
-            "flex flex-col items-center text-xs font-medium",
-            "transition-all duration-200 ease-out",
-            isActive
-              ? "text-blue-600 scale-130 -translate-y-5 bg-sky-100 rounded-full p-2"
-              : "text-gray-500 opacity-80 hover:opacity-100",
-          ].join(" ")
-        }
-      >
-        <House size={22} />
-        <span>Home</span>
-      </NavLink>
-
-      {/* Hijos (botón central normal) */}
       <NavLink
         to="/Kids"
         className={({ isActive }) =>
@@ -74,6 +56,22 @@ export default function BottomNav() {
         <span>Hijos</span>
       </NavLink>
 
+      <NavLink
+        to="/Home"
+        className={({ isActive }) =>
+          [
+            "flex flex-col items-center text-xs font-medium",
+            "transition-all duration-200 ease-out",
+            isActive
+              ? "text-blue-600 scale-130 -translate-y-5 bg-sky-100 rounded-full p-2"
+              : "text-gray-500 opacity-80 hover:opacity-100",
+          ].join(" ")
+        }
+      >
+        <House size={22} />
+        <span>Home</span>
+      </NavLink>
+
       {/* Asistencias */}
       <NavLink
         to="/asistencias"
@@ -82,7 +80,7 @@ export default function BottomNav() {
             "flex flex-col items-center text-xs font-medium",
             "transition-all duration-200 ease-out",
             isActive
-              ? "text-blue-600 scale-130 -translate-y-5 bg-sky-100 rounded-full p-2"
+              ? "text-green-600 scale-130 -translate-y-5 bg-green-100 rounded-full p-2"
               : "text-gray-500 opacity-80 hover:opacity-100",
           ].join(" ")
         }

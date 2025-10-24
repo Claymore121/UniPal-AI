@@ -26,7 +26,7 @@ export default function Login() {
           className="m-auto"
         />
 
-        <form
+        {/* <form
           className="space-y-4  bg-cover bg-center min-h-[300px] p-4"
           style={{ backgroundImage: `url(${wave})` }}
           onSubmit={handleSubmit}
@@ -72,12 +72,35 @@ export default function Login() {
           <a href="#" className="hover:text-blue-400">
             <label htmlFor="">¿Olvido su contraseña?</label>
           </a>
-        </form>
+        </form> */}
+
+        <button
+          onClick={() => {
+            navigate("/Profesor");
+          }}
+          className="
+          w-full mb-4 mt-4 rounded-lg bg-orange-400 px-4 py-2 text-sm font-medium text-white transition hover:bg-orange-500
+        "
+        >
+          Entrar Como profesor
+        </button>
+        <button
+          onClick={() => {
+            navigate("/Home");
+          }}
+          className=" w-full mb-4 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700
+        "
+        >
+          Entrar Como Estudiante
+        </button>
 
         <footer className="flex justify-center text-zinc-400 w-100% mt-2 ">
           <label htmlFor="">°2025 UniPal AI</label>
         </footer>
       </div>
+      {/* <div>
+        
+      </div> */}
     </div>
   );
 }

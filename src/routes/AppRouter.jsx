@@ -6,6 +6,7 @@ import Kids from "../pages/Kids";
 import RegisterPage from "../pages/Register/RegisterPage";
 import CalificacionesMovil from "../pages/CalificacionesMovil";
 import CalendarioAsistencias from "../components/CalendarioAsistencias";
+import Profesor from "../pages/ProfesorPages/Profesor";
 
 export default function AppRouter() {
   return (
@@ -19,6 +20,7 @@ export default function AppRouter() {
         <Route path="/RegisterPage" element={<RegisterPage />} />
         <Route path="/calificaciones" element={<CalificacionesMovil />} />
         <Route path="/asistencias" element={<CalendarioAsistencias />} />
+        <Route path="/profesor" element={<Profesor />} />
 
         {/* Ruta para cuando no se encuentra ninguna coincidencia */}
         <Route path="*" element={<h1>404 - Página no encontrada</h1>} />
