@@ -12,7 +12,7 @@ import { useLocation } from "react-router-dom";
 
 export default function BottomNav() {
   const location = useLocation();
-  const hiddenRoutes = ["/login", "/register", "/Profesor"];
+  const hiddenRoutes = ["/login", "/register", "/Profesor", "/"];
 
   if (hiddenRoutes.includes(location.pathname)) {
     return null; // No mostrar nada
