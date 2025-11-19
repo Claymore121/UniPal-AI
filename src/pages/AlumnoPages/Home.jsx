@@ -8,11 +8,10 @@ import {
   TriangleAlert,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import notificationsData from "../../data/dataNotification";
 import NotificationCard from "../../components/NotificationCard";
-import { Alumnos } from "../../data/dataNotification";
 import NotificationIcon from "../../components/NotificationIcon";
 import Modal from "../../components/Modal";
+import api from "../../services/api";
 
 const DISMISS_MS = 2300;
 
@@ -21,14 +20,54 @@ const Home = () => {
   const [expanded, setExpanded] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [isOpenReuniones, setIsOpeReuniones] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  const [notifications, setNotifications] = useState(notificationsData);
+  const [notifications, setNotifications] = useState([]);
+  const [alumnos, setAlumnos] = useState([]);
+  const [userProfile, setUserProfile] = useState(null);
 
   // ids ocultos SOLO en el feed (no afecta al modal)
   const [hideFeed, setHideFeed] = useState({});
   const timeoutsRef = useRef({});
 
   useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const [notifs, hijos, profile] = await Promise.all([
+          api.getNotificaciones().catch(() => []),
+          api.getHijos().catch(() => []),
+          api.getProfile().catch(() => null),
+        ]);
+        
+        // Transformar notificaciones del backend al formato esperado
+        const transformedNotifs = notifs.map((n) => ({
+          id: n.id,
+          title: n.titulo,
+          message: n.mensaje,
+          time: new Date(n.createdAt).toLocaleDateString('es-MX'),
+          read: n.leida,
+          type: n.tipo,
+          icon: n.icono || "🔔",
+        }));
+        
+        setNotifications(transformedNotifs);
+        setAlumnos(hijos);
+        setUserProfile(profile);
+      } catch (error) {
+        console.error("Error cargando datos:", error);
+        // En caso de error, usar datos mock como fallback
+        const { default: notificationsData } = await import("../../data/dataNotification");
+        const { Alumnos: AlumnosMock } = await import("../../data/dataNotification");
+        setNotifications(notificationsData);
+        setAlumnos(AlumnosMock);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+
     return () => {
       Object.values(timeoutsRef.current).forEach(clearTimeout);
       timeoutsRef.current = {};
@@ -36,10 +75,22 @@ const Home = () => {
   }, []);
 
   // ——— Manejadores ———
-  const handleToggleReadFeed = (id, nextRead) => {
+  const handleToggleReadFeed = async (id, nextRead) => {
+    // Actualizar estado local inmediatamente
     setNotifications((prev) =>
       prev.map((n) => (n.id === id ? { ...n, read: nextRead } : n))
     );
+
+    // Actualizar en el backend
+    try {
+      if (nextRead) {
+        await api.marcarNotificacionLeida(id);
+      } else {
+        await api.marcarNotificacionNoLeida(id);
+      }
+    } catch (error) {
+      console.error("Error actualizando notificación:", error);
+    }
 
     if (nextRead) {
       if (timeoutsRef.current[id]) clearTimeout(timeoutsRef.current[id]);
@@ -60,19 +111,30 @@ const Home = () => {
   };
 
   // En MODAL: NO ocultamos, solo cambiamos estado read
-  const handleToggleReadModal = (id, nextRead) => {
+  const handleToggleReadModal = async (id, nextRead) => {
     setNotifications((prev) =>
       prev.map((n) => (n.id === id ? { ...n, read: nextRead } : n))
     );
+
+    // Actualizar en el backend
+    try {
+      if (nextRead) {
+        await api.marcarNotificacionLeida(id);
+      } else {
+        await api.marcarNotificacionNoLeida(id);
+      }
+    } catch (error) {
+      console.error("Error actualizando notificación:", error);
+    }
   };
 
   const getBgClass = (asistencia) => {
-    switch ((asistencia || "").toLowerCase()) {
-      case "presente":
+    switch ((asistencia || "").toUpperCase()) {
+      case "PRESENTE":
         return "bg-green-100 border-l-4 border-green-500";
-      case "ausente":
+      case "AUSENTE":
         return "bg-red-100 border-l-4 border-red-500";
-      case "retraso":
+      case "RETRASO":
         return "bg-orange-100 border-l-4 border-orange-500";
       default:
         return "bg-amber-200";
@@ -96,9 +158,11 @@ const Home = () => {
 
         <div className="min-w-0">
           <h2 className="text-2xl md:text-3xl leading-tight truncate">
-            Citlali Estrada
+            {userProfile ? `${userProfile.nombre} ${userProfile.apellidos || ""}`.trim() : "Cargando..."}
           </h2>
-          <span className="text-zinc-200 text-sm md:text-base">#10 hijos</span>
+          <span className="text-zinc-200 text-sm md:text-base">
+            {alumnos.length} {alumnos.length === 1 ? "hijo" : "hijos"}
+          </span>
         </div>
 
         <button
@@ -170,53 +234,81 @@ const Home = () => {
 
         <section className="md:col-span-5 xl:col-span-4">
           <div className="px-1 md:px-0">
-            <h2 className="text-2xl font-semibold">Hoy ({Alumnos.length})</h2>
-            <div className="flex flex-col gap-2 mt-3">
-              {Alumnos.map((alumno) => {
-                const primeraMateria = alumno.materias?.[0];
-                if (!primeraMateria) return null;
-
-                const estado =
-                  primeraMateria?.asistencia?.toLowerCase?.() || "";
-
-                return (
-                  <div
-                    key={alumno.id}
-                    className={`${getBgClass(
-                      primeraMateria.asistencia
-                    )} rounded-2xl p-3 flex gap-3 border`}
-                  >
-                    <span className="shrink-0">
-                      {estado === "ausente" ? (
-                        <OctagonAlert className="w-7 h-7 text-red-600 mt-1" />
-                      ) : estado === "retraso" ? (
-                        <TriangleAlert className="w-7 h-7 text-orange-600 mt-1" />
-                      ) : (
-                        <BadgeCheck className="w-7 h-7 text-green-600 mt-1" />
-                      )}
-                    </span>
-
-                    <div className="flex flex-col justify-center w-full">
-                      <div className="flex items-center gap-2 justify-between">
-                        <h3 className="text-base md:text-lg font-semibold">
-                          {alumno.name}
-                        </h3>
-                        <span className="text-xs md:text-sm text-black/70 bg-white/80 px-2 py-0.5 rounded-md border">
-                          {primeraMateria.asistencia}
-                        </span>
-                      </div>
-
-                      <div className="text-xs md:text-sm text-zinc-600 mt-0.5">
-                        <div className="font-medium">
-                          {primeraMateria.nombre}
+            <h2 className="text-2xl font-semibold">Hoy ({alumnos.length})</h2>
+            {loading ? (
+              <div className="text-center py-8 text-gray-500">Cargando...</div>
+            ) : alumnos.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">No hay hijos registrados</div>
+            ) : (
+              <div className="flex flex-col gap-2 mt-3">
+                {alumnos.map((alumno) => {
+                  // Obtener la primera inscripción/clase
+                  const primeraInscripcion = alumno.inscripciones?.[0];
+                  if (!primeraInscripcion) {
+                    return (
+                      <div
+                        key={alumno.id}
+                        className="bg-gray-100 rounded-2xl p-3 flex gap-3 border"
+                      >
+                        <div className="flex flex-col justify-center w-full">
+                          <h3 className="text-base md:text-lg font-semibold">
+                            {alumno.nombre} {alumno.apellidos}
+                          </h3>
+                          <div className="text-xs md:text-sm text-zinc-600 mt-0.5">
+                            Sin materias asignadas
+                          </div>
                         </div>
-                        <div>{primeraMateria.horario}</div>
+                      </div>
+                    );
+                  }
+
+                  const clase = primeraInscripcion.clase;
+                  // Obtener la última asistencia de hoy
+                  const hoy = new Date();
+                  hoy.setHours(0, 0, 0, 0);
+                  const asistenciaHoy = alumno.asistencias?.find(
+                    (a) =>
+                      new Date(a.fecha).toDateString() === hoy.toDateString() &&
+                      a.claseId === clase.id
+                  );
+
+                  const estado = asistenciaHoy?.estado || "PRESENTE";
+
+                  return (
+                    <div
+                      key={alumno.id}
+                      className={`${getBgClass(estado)} rounded-2xl p-3 flex gap-3 border`}
+                    >
+                      <span className="shrink-0">
+                        {estado === "AUSENTE" ? (
+                          <OctagonAlert className="w-7 h-7 text-red-600 mt-1" />
+                        ) : estado === "RETRASO" ? (
+                          <TriangleAlert className="w-7 h-7 text-orange-600 mt-1" />
+                        ) : (
+                          <BadgeCheck className="w-7 h-7 text-green-600 mt-1" />
+                        )}
+                      </span>
+
+                      <div className="flex flex-col justify-center w-full">
+                        <div className="flex items-center gap-2 justify-between">
+                          <h3 className="text-base md:text-lg font-semibold">
+                            {alumno.nombre} {alumno.apellidos}
+                          </h3>
+                          <span className="text-xs md:text-sm text-black/70 bg-white/80 px-2 py-0.5 rounded-md border">
+                            {estado}
+                          </span>
+                        </div>
+
+                        <div className="text-xs md:text-sm text-zinc-600 mt-0.5">
+                          <div className="font-medium">{clase.materia}</div>
+                          <div>{clase.horario}</div>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </section>
 

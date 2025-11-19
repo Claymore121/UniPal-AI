@@ -1,0 +1,57 @@
+# Dependencies
+node_modules/
+**/node_modules/
+backend/node_modules/
+
+# Vite cache
+.vite/
+**/.vite/
+node_modules/.vite/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+backend/.env
+backend/.env.local
+
+# Build outputs
+dist/
+backend/dist/
+build/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Prisma (las migraciones SÍ se suben, solo ignoramos archivos generados)
+# backend/prisma/migrations/ - NO ignorar, las migraciones son necesarias
+
+# Testing
+coverage/
+.nyc_output/
+
+# Misc
+*.pem
+.cache/
+

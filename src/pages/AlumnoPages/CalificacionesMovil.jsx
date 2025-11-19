@@ -1,69 +1,5 @@
-import React, { useMemo, useState } from "react";
-
-/** ===== EJEMPLO DE DATOS (puedes reemplazar por fetch a tu API) ===== */
-const MOCK = [
-  {
-    id: 1,
-    nombre: "Luis",
-    grado: "2° Secundaria",
-    materias: [
-      {
-        id: "mat",
-        nombre: "Matemáticas",
-        calificacion: 92,
-        tareas: [
-          { id: "t1", titulo: "Ecuaciones lineales", estado: "entregada" },
-          { id: "t2", titulo: "Inecuaciones", estado: "pendiente" },
-          { id: "t3", titulo: "Sistema 2x2", estado: "entregada" },
-        ],
-      },
-      {
-        id: "his",
-        nombre: "Historia",
-        calificacion: 84,
-        tareas: [
-          { id: "t1", titulo: "Mapa mental: Revolución", estado: "entregada" },
-          { id: "t2", titulo: "Línea del tiempo", estado: "entregada" },
-          { id: "t3", titulo: "Resumen WWI", estado: "fallida" },
-        ],
-      },
-      {
-        id: "esp",
-        nombre: "Español",
-        calificacion: 68,
-        tareas: [
-          { id: "t1", titulo: "Ensayo", estado: "fallida" },
-          { id: "t2", titulo: "Lectura guiada", estado: "pendiente" },
-        ],
-      },
-    ],
-  },
-  {
-    id: 2,
-    nombre: "María",
-    grado: "3° Secundaria",
-    materias: [
-      {
-        id: "qui",
-        nombre: "Química",
-        calificacion: 78,
-        tareas: [
-          { id: "t1", titulo: "Tabla periódica", estado: "entregada" },
-          { id: "t2", titulo: "Enlaces químicos", estado: "pendiente" },
-        ],
-      },
-      {
-        id: "ing",
-        nombre: "Inglés",
-        calificacion: 95,
-        tareas: [
-          { id: "t1", titulo: "Reading B1", estado: "entregada" },
-          { id: "t2", titulo: "Vocabulary", estado: "entregada" },
-        ],
-      },
-    ],
-  },
-];
+import React, { useMemo, useState, useEffect } from "react";
+import api from "../../services/api";
 
 /** ===== Helpers de color y formato ===== */
 const gradeTone = (n) => {
@@ -113,24 +49,111 @@ const taskChipClass = (estado) => {
 const formatPct = (n) => `${Math.round(n)}%`;
 
 /** ===== Componente principal ===== */
-export default function CalificacionesMovil({ data = MOCK }) {
-  // Filtro rápido por hijo (para móviles con varios hijos)
-  const [alumnoId, setAlumnoId] = useState(data?.[0]?.id ?? null);
+export default function CalificacionesMovil() {
+  const [hijos, setHijos] = useState([]);
+  const [calificaciones, setCalificaciones] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [loadingCalificaciones, setLoadingCalificaciones] = useState(false);
+  const [alumnoId, setAlumnoId] = useState(null);
 
+  // Cargar hijos al montar el componente
+  useEffect(() => {
+    const cargarHijos = async () => {
+      try {
+        setLoading(true);
+        const hijosData = await api.getHijos();
+        setHijos(hijosData);
+        if (hijosData.length > 0) {
+          setAlumnoId(hijosData[0].id);
+        }
+      } catch (error) {
+        console.error("Error cargando hijos:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    cargarHijos();
+  }, []);
+
+  // Cargar calificaciones cuando se selecciona un alumno
+  useEffect(() => {
+    const cargarCalificaciones = async () => {
+      if (!alumnoId) return;
+
+      try {
+        setLoadingCalificaciones(true);
+        const calificacionesData = await api.getCalificaciones(alumnoId);
+        setCalificaciones(calificacionesData);
+      } catch (error) {
+        console.error("Error cargando calificaciones:", error);
+        setCalificaciones([]);
+      } finally {
+        setLoadingCalificaciones(false);
+      }
+    };
+
+    cargarCalificaciones();
+  }, [alumnoId]);
+
+  // Obtener el alumno seleccionado
   const alumno = useMemo(
-    () => data.find((a) => a.id === alumnoId) ?? data[0],
-    [alumnoId, data]
+    () => hijos.find((h) => h.id === alumnoId) ?? null,
+    [alumnoId, hijos]
   );
+
+  // Transformar calificaciones del backend al formato esperado
+  const materiasConCalificaciones = useMemo(() => {
+    if (!calificaciones.length) return [];
+
+    // Agrupar calificaciones por materia
+    const materiasMap = new Map();
+
+    calificaciones.forEach((cal) => {
+      const materiaNombre = cal.materia;
+      
+      if (!materiasMap.has(materiaNombre)) {
+        materiasMap.set(materiaNombre, {
+          id: materiaNombre.toLowerCase().replace(/\s+/g, "-"),
+          nombre: materiaNombre,
+          calificaciones: [],
+        });
+      }
+
+      materiasMap.get(materiaNombre).calificaciones.push({
+        valor: cal.valor,
+        fecha: cal.fecha,
+        notas: cal.notas,
+      });
+    });
+
+    // Calcular promedio por materia
+    const materias = Array.from(materiasMap.values()).map((materia) => {
+      const suma = materia.calificaciones.reduce(
+        (acc, cal) => acc + cal.valor,
+        0
+      );
+      const promedio = Math.round(suma / materia.calificaciones.length);
+
+      return {
+        ...materia,
+        calificacion: promedio,
+        tareas: [], // Las tareas no están en el backend por ahora
+      };
+    });
+
+    return materias;
+  }, [calificaciones]);
 
   // Promedio general del alumno
   const promedio = useMemo(() => {
-    if (!alumno?.materias?.length) return 0;
-    const sum = alumno.materias.reduce(
+    if (!materiasConCalificaciones.length) return 0;
+    const sum = materiasConCalificaciones.reduce(
       (acc, m) => acc + (m.calificacion ?? 0),
       0
     );
-    return Math.round(sum / alumno.materias.length);
-  }, [alumno]);
+    return Math.round(sum / materiasConCalificaciones.length);
+  }, [materiasConCalificaciones]);
 
   const tonoProm = gradeTone(promedio);
   const tProm = toneClasses[tonoProm];
@@ -148,151 +171,176 @@ export default function CalificacionesMovil({ data = MOCK }) {
         {/* Selector de hijo */}
         <div className="mb-4">
           <label className="block text-sm text-zinc-600 mb-1">Alumno</label>
-          <select
-            className="w-full rounded-lg border px-3 py-2 text-sm"
-            value={alumno?.id ?? ""}
-            onChange={(e) => setAlumnoId(Number(e.target.value))}
-          >
-            {data.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.nombre} — {a.grado}
-              </option>
-            ))}
-          </select>
+          {loading ? (
+            <div className="w-full rounded-lg border px-3 py-2 text-sm bg-zinc-100 animate-pulse">
+              Cargando hijos...
+            </div>
+          ) : hijos.length === 0 ? (
+            <div className="w-full rounded-lg border px-3 py-2 text-sm text-zinc-500 text-center">
+              No tienes hijos registrados
+            </div>
+          ) : (
+            <select
+              className="w-full rounded-lg border px-3 py-2 text-sm"
+              value={alumnoId ?? ""}
+              onChange={(e) => setAlumnoId(e.target.value)}
+            >
+              {hijos.map((hijo) => (
+                <option key={hijo.id} value={hijo.id}>
+                  {hijo.nombre} {hijo.apellidos || ""} — {hijo.grado}
+                </option>
+              ))}
+            </select>
+          )}
         </div>
 
         {/* Card de promedio general */}
-        <section
-          className={`rounded-2xl border p-4 mb-4 ${tProm.bgSoft} border-dashed ${tProm.ring}`}
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs text-zinc-500">Promedio general</p>
-              <p className={`text-3xl font-bold ${tProm.text}`}>{promedio}</p>
-            </div>
-            {/* Donut simple con conic-gradient */}
-            <div
-              className="relative h-16 w-16 rounded-full"
-              style={{
-                background: `conic-gradient(var(--c) 0% ${promedio}%, #e5e7eb 0%)`,
-                // --c depende del tono
-                ["--c"]: tProm.bar
-                  ? `oklch(from theme ${tProm.bar})`
-                  : "#10b981",
-              }}
-            >
-              <div className="absolute inset-2 rounded-full bg-white flex items-center justify-center border">
-                <span className="text-xs font-semibold">
-                  {formatPct(promedio)}
-                </span>
+        {loadingCalificaciones ? (
+          <section className="rounded-2xl border p-4 mb-4 bg-zinc-50 animate-pulse">
+            <div className="h-20"></div>
+          </section>
+        ) : materiasConCalificaciones.length === 0 && alumnoId ? (
+          <section className="rounded-2xl border p-4 mb-4 bg-zinc-50">
+            <p className="text-center text-zinc-500">
+              No hay calificaciones registradas para este alumno
+            </p>
+          </section>
+        ) : (
+          <section
+            className={`rounded-2xl border p-4 mb-4 ${tProm.bgSoft} border-dashed ${tProm.ring}`}
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs text-zinc-500">Promedio general</p>
+                <p className={`text-3xl font-bold ${tProm.text}`}>{promedio}</p>
+              </div>
+              {/* Donut simple con conic-gradient */}
+              <div
+                className="relative h-16 w-16 rounded-full"
+                style={{
+                  background: `conic-gradient(var(--c) 0% ${promedio}%, #e5e7eb 0%)`,
+                  // --c depende del tono
+                  ["--c"]: tProm.bar
+                    ? `oklch(from theme ${tProm.bar})`
+                    : "#10b981",
+                }}
+              >
+                <div className="absolute inset-2 rounded-full bg-white flex items-center justify-center border">
+                  <span className="text-xs font-semibold">
+                    {formatPct(promedio)}
+                  </span>
+                </div>
               </div>
             </div>
-          </div>
-          {/* Barra de progreso */}
-          <div className="mt-3 h-2 w-full bg-zinc-100 rounded-full overflow-hidden">
-            <div
-              className={`h-full ${tProm.bar}`}
-              style={{ width: `${Math.min(100, Math.max(0, promedio))}%` }}
-            />
-          </div>
-        </section>
+            {/* Barra de progreso */}
+            <div className="mt-3 h-2 w-full bg-zinc-100 rounded-full overflow-hidden">
+              <div
+                className={`h-full ${tProm.bar}`}
+                style={{ width: `${Math.min(100, Math.max(0, promedio))}%` }}
+              />
+            </div>
+          </section>
+        )}
 
         {/* Materias */}
-        <ul className="space-y-4">
-          {alumno?.materias?.map((m) => {
-            const tone = toneClasses[gradeTone(m.calificacion ?? 0)];
-            const pct = Math.min(100, Math.max(0, m.calificacion ?? 0));
-            const entregadas = m.tareas.filter(
-              (t) => t.estado === "entregada"
-            ).length;
-            const pendientes = m.tareas.filter(
-              (t) => t.estado === "pendiente"
-            ).length;
-            const fallidas = m.tareas.filter(
-              (t) => t.estado === "fallida"
-            ).length;
-
-            return (
+        {loadingCalificaciones ? (
+          <ul className="space-y-4">
+            {[1, 2, 3].map((i) => (
               <li
-                key={m.id}
-                className={`rounded-2xl border p-4 ${tone.bgSoft} border-zinc-200`}
+                key={i}
+                className="rounded-2xl border p-4 bg-zinc-50 animate-pulse"
               >
-                {/* Encabezado materia */}
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <h3 className="text-base font-semibold truncate">
-                      {m.nombre}
-                    </h3>
-                    <p className="text-xs text-zinc-500">Calificación actual</p>
-                  </div>
-                  <div className="text-right">
-                    <span className={`text-2xl font-bold ${tone.text}`}>
-                      {m.calificacion}
-                    </span>
-                    <div className="mt-1 text-[11px] text-zinc-500">
-                      {labelFromGrade(m.calificacion)}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Progreso materia */}
-                <div className="mt-3 h-2 w-full bg-white rounded-full overflow-hidden ring-1 ring-zinc-100">
-                  <div
-                    className={`h-full ${tone.bar}`}
-                    style={{ width: `${pct}%` }}
-                  />
-                </div>
-
-                {/* Chips de tareas */}
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <span
-                    className={`px-2.5 py-1 rounded-full text-xs ${taskChipClass(
-                      "entregada"
-                    )}`}
-                  >
-                    Entregadas: {entregadas}
-                  </span>
-                  <span
-                    className={`px-2.5 py-1 rounded-full text-xs ${taskChipClass(
-                      "pendiente"
-                    )}`}
-                  >
-                    Pendientes: {pendientes}
-                  </span>
-                  <span
-                    className={`px-2.5 py-1 rounded-full text-xs ${taskChipClass(
-                      "fallida"
-                    )}`}
-                  >
-                    Fallidas: {fallidas}
-                  </span>
-                </div>
-
-                {/* Lista compacta de tareas (mobile) */}
-                <div className="mt-3 divide-y divide-zinc-200 bg-white rounded-xl overflow-hidden">
-                  {m.tareas.map((t) => (
-                    <div
-                      key={t.id}
-                      className="flex items-center justify-between px-3 py-2 text-sm"
-                    >
-                      <div className="min-w-0">
-                        <p className="truncate">{t.titulo}</p>
-                        <p className="text-[11px] text-zinc-500">Tarea</p>
-                      </div>
-                      <span
-                        className={`px-2 py-0.5 rounded-full text-[11px] ${taskChipClass(
-                          t.estado
-                        )}`}
-                      >
-                        {capitalize(t.estado)}
-                      </span>
-                    </div>
-                  ))}
-                </div>
+                <div className="h-24"></div>
               </li>
-            );
-          })}
-        </ul>
+            ))}
+          </ul>
+        ) : materiasConCalificaciones.length === 0 ? (
+          <div className="text-center py-8 text-zinc-500">
+            <p>No hay materias con calificaciones registradas</p>
+          </div>
+        ) : (
+          <ul className="space-y-4">
+            {materiasConCalificaciones.map((m) => {
+              const tone = toneClasses[gradeTone(m.calificacion ?? 0)];
+              const pct = Math.min(100, Math.max(0, m.calificacion ?? 0));
+
+              return (
+                <li
+                  key={m.id}
+                  className={`rounded-2xl border p-4 ${tone.bgSoft} border-zinc-200`}
+                >
+                  {/* Encabezado materia */}
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <h3 className="text-base font-semibold truncate">
+                        {m.nombre}
+                      </h3>
+                      <p className="text-xs text-zinc-500">Calificación actual</p>
+                    </div>
+                    <div className="text-right">
+                      <span className={`text-2xl font-bold ${tone.text}`}>
+                        {m.calificacion}
+                      </span>
+                      <div className="mt-1 text-[11px] text-zinc-500">
+                        {labelFromGrade(m.calificacion)}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Progreso materia */}
+                  <div className="mt-3 h-2 w-full bg-white rounded-full overflow-hidden ring-1 ring-zinc-100">
+                    <div
+                      className={`h-full ${tone.bar}`}
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+
+                  {/* Información de calificaciones */}
+                  <div className="mt-3">
+                    <p className="text-xs text-zinc-500 mb-2">
+                      Total de calificaciones: {m.calificaciones.length}
+                    </p>
+                    {/* Lista de calificaciones recientes */}
+                    {m.calificaciones.length > 0 && (
+                      <div className="mt-2 divide-y divide-zinc-200 bg-white rounded-xl overflow-hidden">
+                        {m.calificaciones.slice(0, 3).map((cal, idx) => (
+                          <div
+                            key={idx}
+                            className="flex items-center justify-between px-3 py-2 text-sm"
+                          >
+                            <div className="min-w-0">
+                              <p className="font-medium">
+                                Calificación: {cal.valor}
+                              </p>
+                              <p className="text-[11px] text-zinc-500">
+                                {new Date(cal.fecha).toLocaleDateString("es-MX")}
+                              </p>
+                              {cal.notas && (
+                                <p className="text-[11px] text-zinc-400 mt-1">
+                                  {cal.notas}
+                                </p>
+                              )}
+                            </div>
+                            <span
+                              className={`px-2 py-0.5 rounded-full text-[11px] ${toneClasses[gradeTone(cal.valor)].chip}`}
+                            >
+                              {labelFromGrade(cal.valor)}
+                            </span>
+                          </div>
+                        ))}
+                        {m.calificaciones.length > 3 && (
+                          <div className="px-3 py-2 text-xs text-zinc-500 text-center">
+                            +{m.calificaciones.length - 3} calificación(es) más
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
 
         {/* Leyenda de colores */}
         <footer className="mt-6 ">

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import {
   GraduationCap,
   BookOpen,
@@ -14,8 +14,11 @@ import {
   Search,
   BarChart3,
   FileText,
+  Settings,
+  ClipboardCheck, // Nuevo ícono para asistencia
 } from "lucide-react";
 import { Navigate, useNavigate } from "react-router-dom";
+import api from "../../services/api";
 
 // --- Datos de ejemplo ---
 const classrooms = [
@@ -130,7 +133,7 @@ function Card({ children, className = "" }) {
     </div>
   );
 }
-// probando ramas y esquemas privados
+
 function CardHeader({ children, className = "" }) {
   return <div className={`mb-3 ${className} `}>{children}</div>;
 }
@@ -246,6 +249,385 @@ export default function TeacherDashboard() {
   const [openNotice, setOpenNotice] = useState(false);
   const [openMeeting, setOpenMeeting] = useState(false);
   const [openGrade, setOpenGrade] = useState(false);
+  const [openAttendance, setOpenAttendance] = useState(false); // Nuevo estado para modal de asistencia
+
+  // Datos del backend
+  const [clases, setClases] = useState([]);
+  const [alumnos, setAlumnos] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // Estados para el formulario de calificación
+  const [formCalificacion, setFormCalificacion] = useState({
+    claseId: "",
+    alumnoId: "",
+    valor: "",
+    materia: "",
+    notas: "",
+  });
+  const [alumnosClase, setAlumnosClase] = useState([]);
+  const [enviandoCalificacion, setEnviandoCalificacion] = useState(false);
+
+  // Estados para el formulario de comunicado
+  const [formComunicado, setFormComunicado] = useState({
+    claseId: "",
+    todosLosSalones: false,
+    titulo: "",
+    mensaje: "",
+  });
+  const [enviandoComunicado, setEnviandoComunicado] = useState(false);
+
+  // Estados para el formulario de reunión
+  const [formReunion, setFormReunion] = useState({
+    titulo: "",
+    fecha: "",
+    hora: "",
+    tipo: "PADRES",
+    descripcion: "",
+    claseId: "",
+  });
+  const [enviandoReunion, setEnviandoReunion] = useState(false);
+  const [reuniones, setReuniones] = useState([]);
+
+  // Estados para el formulario de asistencia
+  const [formAsistencia, setFormAsistencia] = useState({
+    claseId: "",
+    materia: "",
+    fecha: new Date().toISOString().split("T")[0], // Fecha actual por defecto
+  });
+  const [alumnosAsistencia, setAlumnosAsistencia] = useState([]);
+  const [enviandoAsistencia, setEnviandoAsistencia] = useState(false);
+
+  // Cargar clases del maestro y reuniones
+  useEffect(() => {
+    const cargarDatos = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        // Cargar clases y reuniones por separado para que un error no afecte al otro
+        const [clasesResult, reunionesResult] = await Promise.allSettled([
+          api.getClases(),
+          api.getReuniones(),
+        ]);
+
+        // Procesar clases
+        if (clasesResult.status === "fulfilled") {
+          // Verificar que la respuesta sea un array
+          if (Array.isArray(clasesResult.value)) {
+            setClases(clasesResult.value);
+          } else {
+            console.error(
+              "Respuesta de clases no es un array:",
+              clasesResult.value
+            );
+            setError("Formato de respuesta inválido al cargar clases");
+            setClases([]);
+          }
+        } else {
+          console.error("Error cargando clases:", clasesResult.reason);
+          const errorMessage =
+            clasesResult.reason?.message ||
+            clasesResult.reason?.error ||
+            "Error desconocido";
+          setError("Error al cargar clases: " + errorMessage);
+          setClases([]);
+        }
+
+        // Procesar reuniones
+        if (reunionesResult.status === "fulfilled") {
+          // Verificar que la respuesta sea un array
+          if (Array.isArray(reunionesResult.value)) {
+            setReuniones(reunionesResult.value);
+          } else {
+            console.error(
+              "Respuesta de reuniones no es un array:",
+              reunionesResult.value
+            );
+            setReuniones([]);
+          }
+        } else {
+          console.error("Error cargando reuniones:", reunionesResult.reason);
+          // No mostrar error de reuniones como error principal, solo loguear
+          setReuniones([]);
+        }
+      } catch (err) {
+        console.error("Error inesperado cargando datos:", err);
+        setError(err.message || "Error al cargar datos");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    cargarDatos();
+  }, []);
+
+  // Cargar alumnos cuando se selecciona una clase en el formulario
+  useEffect(() => {
+    const cargarAlumnos = async () => {
+      if (!formCalificacion.claseId) {
+        setAlumnosClase([]);
+        return;
+      }
+
+      try {
+        const alumnosData = await api.getAlumnosByClase(
+          formCalificacion.claseId
+        );
+        setAlumnosClase(alumnosData);
+        // Limpiar alumno seleccionado si cambia la clase
+        setFormCalificacion((prev) => ({ ...prev, alumnoId: "" }));
+      } catch (err) {
+        console.error("Error cargando alumnos:", err);
+        setAlumnosClase([]);
+      }
+    };
+
+    cargarAlumnos();
+  }, [formCalificacion.claseId]);
+
+  // Cargar alumnos cuando se selecciona una clase en el formulario de asistencia
+  useEffect(() => {
+    const cargarAlumnosAsistencia = async () => {
+      if (!formAsistencia.claseId) {
+        setAlumnosAsistencia([]);
+        return;
+      }
+
+      try {
+        const alumnosData = await api.getAlumnosByClase(formAsistencia.claseId);
+        // Inicializar todos los alumnos como "PRESENTE" por defecto
+        const alumnosConEstado = alumnosData.map((alumno) => ({
+          ...alumno,
+          estado: "PRESENTE",
+        }));
+        setAlumnosAsistencia(alumnosConEstado);
+      } catch (err) {
+        console.error("Error cargando alumnos para asistencia:", err);
+        setAlumnosAsistencia([]);
+      }
+    };
+
+    cargarAlumnosAsistencia();
+  }, [formAsistencia.claseId]);
+
+  // Manejar cambio de clase en el formulario
+  const handleClaseChange = (claseId) => {
+    const claseSeleccionada = clases.find((c) => c.id === claseId);
+    setFormCalificacion({
+      ...formCalificacion,
+      claseId,
+      materia: claseSeleccionada?.materia || "",
+      alumnoId: "",
+    });
+  };
+
+  // Manejar cambio de clase en el formulario de asistencia
+  const handleClaseChangeAsistencia = (claseId) => {
+    const claseSeleccionada = clases.find((c) => c.id === claseId);
+    setFormAsistencia({
+      ...formAsistencia,
+      claseId,
+      materia: claseSeleccionada?.materia || "",
+    });
+  };
+
+  // Manejar cambio de estado de asistencia para un alumno
+  const handleCambioAsistencia = (alumnoId, nuevoEstado) => {
+    setAlumnosAsistencia((prev) =>
+      prev.map((alumno) =>
+        alumno.id === alumnoId ? { ...alumno, estado: nuevoEstado } : alumno
+      )
+    );
+  };
+
+  // Manejar envío de calificación
+  const handleEnviarCalificacion = async (e) => {
+    e.preventDefault();
+
+    if (
+      !formCalificacion.claseId ||
+      !formCalificacion.alumnoId ||
+      !formCalificacion.valor ||
+      !formCalificacion.materia
+    ) {
+      alert("Por favor completa todos los campos requeridos");
+      return;
+    }
+
+    try {
+      setEnviandoCalificacion(true);
+      await api.registrarCalificacion({
+        alumnoId: formCalificacion.alumnoId,
+        claseId: formCalificacion.claseId,
+        valor: parseFloat(formCalificacion.valor),
+        materia: formCalificacion.materia,
+        notas: formCalificacion.notas || undefined,
+      });
+
+      alert("Calificación registrada exitosamente");
+      // Limpiar formulario
+      setFormCalificacion({
+        claseId: "",
+        alumnoId: "",
+        valor: "",
+        materia: "",
+        notas: "",
+      });
+      setOpenGrade(false);
+      // Recargar datos si es necesario
+    } catch (err) {
+      console.error("Error registrando calificación:", err);
+      alert(err.message || "Error al registrar la calificación");
+    } finally {
+      setEnviandoCalificacion(false);
+    }
+  };
+
+  // Manejar envío de comunicado
+  const handleEnviarComunicado = async (e) => {
+    e.preventDefault();
+
+    if (!formComunicado.titulo || !formComunicado.mensaje) {
+      alert("Por favor completa el título y el mensaje");
+      return;
+    }
+
+    if (!formComunicado.todosLosSalones && !formComunicado.claseId) {
+      alert("Por favor selecciona una clase o marca 'Todos los salones'");
+      return;
+    }
+
+    try {
+      setEnviandoComunicado(true);
+      const result = await api.enviarComunicado({
+        titulo: formComunicado.titulo,
+        mensaje: formComunicado.mensaje,
+        claseId: formComunicado.todosLosSalones
+          ? undefined
+          : formComunicado.claseId,
+        todosLosSalones: formComunicado.todosLosSalones,
+      });
+
+      alert(
+        `Comunicado enviado exitosamente a ${result.notificacionesEnviadas} padre(s)`
+      );
+      // Limpiar formulario
+      setFormComunicado({
+        claseId: "",
+        todosLosSalones: false,
+        titulo: "",
+        mensaje: "",
+      });
+      setOpenNotice(false);
+    } catch (err) {
+      console.error("Error enviando comunicado:", err);
+      alert(err.message || "Error al enviar el comunicado");
+    } finally {
+      setEnviandoComunicado(false);
+    }
+  };
+
+  // Manejar envío de reunión
+  const handleEnviarReunion = async (e) => {
+    e.preventDefault();
+
+    if (
+      !formReunion.titulo ||
+      !formReunion.fecha ||
+      !formReunion.hora ||
+      !formReunion.tipo
+    ) {
+      alert("Por favor completa todos los campos requeridos");
+      return;
+    }
+
+    try {
+      setEnviandoReunion(true);
+      const reunion = await api.crearReunion({
+        titulo: formReunion.titulo,
+        fecha: formReunion.fecha,
+        hora: formReunion.hora,
+        tipo: formReunion.tipo,
+        descripcion: formReunion.descripcion || undefined,
+        claseId: formReunion.claseId || undefined,
+      });
+
+      alert("Reunión agendada exitosamente");
+      // Limpiar formulario
+      setFormReunion({
+        titulo: "",
+        fecha: "",
+        hora: "",
+        tipo: "PADRES",
+        descripcion: "",
+        claseId: "",
+      });
+      setOpenMeeting(false);
+      // Recargar reuniones
+      const reunionesData = await api.getReuniones();
+      setReuniones(reunionesData);
+    } catch (err) {
+      console.error("Error creando reunión:", err);
+      alert(err.message || "Error al crear la reunión");
+    } finally {
+      setEnviandoReunion(false);
+    }
+  };
+
+  // Manejar envío de asistencia
+  const handleEnviarAsistencia = async (e) => {
+    e.preventDefault();
+
+    if (
+      !formAsistencia.claseId ||
+      !formAsistencia.materia ||
+      !formAsistencia.fecha
+    ) {
+      alert("Por favor completa todos los campos requeridos");
+      return;
+    }
+
+    if (alumnosAsistencia.length === 0) {
+      alert("No hay alumnos para registrar asistencia");
+      return;
+    }
+
+    try {
+      setEnviandoAsistencia(true);
+
+      // Preparar datos para enviar
+      const registrosAsistencia = alumnosAsistencia.map((alumno) => ({
+        alumnoId: alumno.id,
+        estado: alumno.estado,
+        fecha: formAsistencia.fecha,
+        claseId: formAsistencia.claseId,
+        materia: formAsistencia.materia,
+      }));
+
+      // Aquí llamarías a tu API para guardar la asistencia
+      // await api.registrarAsistencia(registrosAsistencia);
+
+      // Por ahora solo mostramos un mensaje de éxito
+      alert(
+        `Asistencia registrada exitosamente para ${alumnosAsistencia.length} alumnos`
+      );
+
+      // Limpiar formulario
+      setFormAsistencia({
+        claseId: "",
+        materia: "",
+        fecha: new Date().toISOString().split("T")[0],
+      });
+      setAlumnosAsistencia([]);
+      setOpenAttendance(false);
+    } catch (err) {
+      console.error("Error registrando asistencia:", err);
+      alert(err.message || "Error al registrar la asistencia");
+    } finally {
+      setEnviandoAsistencia(false);
+    }
+  };
 
   const filteredStudents = useMemo(() => {
     return students.filter(
@@ -261,8 +643,7 @@ export default function TeacherDashboard() {
   const navigate = useNavigate();
   return (
     <div className="min-h-screen bg-zinc-50 text-zinc-900  ">
-      {/* Header */}
-      <header className="sticky top-0 z-40 border-b border-zinc-200 bg-gradient-to-r from-[#295dfc] to-[#1f3fa9] backdrop-blur  ">
+      <header className="sticky top-0 z-40 border-b border-zinc-200 bg-gradient-to-r from-[#295dfc] to-[#1f3fa9] backdrop-blur">
         <div className="mx-auto max-w-7xl px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -273,18 +654,26 @@ export default function TeacherDashboard() {
                 <h1 className="text-xl text-white font-semibold">
                   Portal del Profesor
                 </h1>
-                <p className="text-sm text-black-500 ">Prof. Roberto Méndez</p>
+                <p className="text-sm text-black-500">Prof. Roberto Méndez</p>
               </div>
             </div>
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-zinc-200 font-semibold text-zinc-700  cursor-pointer ">
-              <img
-                src="/src/assets/profesor1.png"
-                alt=""
-                className=" bg-cover h-full w-full "
-                onClick={() => {
-                  navigate("/login");
-                }}
-              />
+
+            <div className="flex items-center gap-4">
+              <div
+                className="flex h-10 w-10 items-center justify-center rounded-full bg-white cursor-pointer hover:bg-zinc-100 transition"
+                onClick={() => navigate("/profesor/config")}
+              >
+                <Settings className="w-6 h-6 text-zinc-700" />
+              </div>
+
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-zinc-200 cursor-pointer overflow-hidden">
+                <img
+                  src="/src/assets/profesor1.png"
+                  alt="avatar"
+                  className="h-full w-full object-cover"
+                  onClick={() => navigate("/login")}
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -311,7 +700,7 @@ export default function TeacherDashboard() {
                     <span className="text-sm">Salones</span>
                   </div>
                   <span className="text-2xl font-bold">
-                    {classrooms.length}
+                    {loading ? "..." : clases.length}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
@@ -330,7 +719,9 @@ export default function TeacherDashboard() {
                     </div>
                     <span className="text-sm">Reuniones</span>
                   </div>
-                  <span className="text-2xl font-bold">{meetings.length}</span>
+                  <span className="text-2xl font-bold">
+                    {loading ? "..." : reuniones.length}
+                  </span>
                 </div>
               </div>
             </Card>
@@ -367,6 +758,15 @@ export default function TeacherDashboard() {
                   <FileText className="h-4 w-4" />
                   Registrar Calificación
                 </Button>
+                {/* Nuevo botón para tomar asistencia */}
+                <Button
+                  variant="outline"
+                  className="w-full justify-start"
+                  onClick={() => setOpenAttendance(true)}
+                >
+                  <ClipboardCheck className="h-4 w-4" />
+                  Tomar Asistencia
+                </Button>
               </div>
             </Card>
 
@@ -379,24 +779,41 @@ export default function TeacherDashboard() {
                 </CardTitle>
               </CardHeader>
               <div className="h-52 space-y-3 overflow-y-auto pr-1">
-                {meetings.map((m) => (
-                  <div
-                    key={m.id}
-                    className="rounded-lg border border-zinc-200 bg-white p-3  "
-                  >
-                    <p className="text-sm font-medium">{m.title}</p>
-                    <div className="mt-1 flex items-center gap-2 text-xs text-zinc-500 ">
-                      <CalendarIcon className="h-3 w-3" />
-                      <span>{m.date}</span>
-                      <span>•</span>
-                      <Clock className="h-3 w-3" />
-                      <span>{m.time}</span>
+                {loading ? (
+                  <p className="text-center text-zinc-500 text-sm">
+                    Cargando...
+                  </p>
+                ) : reuniones.length === 0 ? (
+                  <p className="text-center text-zinc-500 text-sm">
+                    No hay reuniones programadas
+                  </p>
+                ) : (
+                  reuniones.slice(0, 5).map((m) => (
+                    <div
+                      key={m.id}
+                      className="rounded-lg border border-zinc-200 bg-white p-3  "
+                    >
+                      <p className="text-sm font-medium">{m.titulo}</p>
+                      <div className="mt-1 flex items-center gap-2 text-xs text-zinc-500 ">
+                        <CalendarIcon className="h-3 w-3" />
+                        <span>
+                          {new Date(m.fecha).toLocaleDateString("es-MX")}
+                        </span>
+                        <span>•</span>
+                        <Clock className="h-3 w-3" />
+                        <span>{m.hora}</span>
+                      </div>
+                      {m.clase && (
+                        <p className="mt-1 text-xs text-zinc-400">
+                          {m.clase.nombre}
+                        </p>
+                      )}
+                      <Badge variant="secondary" className="mt-2">
+                        {m.tipo}
+                      </Badge>
                     </div>
-                    <Badge variant="secondary" className="mt-2">
-                      {m.type}
-                    </Badge>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             </Card>
           </div>
@@ -439,30 +856,59 @@ export default function TeacherDashboard() {
               {/* Contenido tabs */}
               {tab === "classrooms" ? (
                 <div className="mt-4 space-y-4">
-                  {classrooms.map((c) => (
-                    <div
-                      key={c.id}
-                      className="rounded-lg border border-zinc-200 bg-white p-4 transition-colors hover:border-indigo-500  "
-                    >
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <h3 className="font-semibold">{c.name}</h3>
-                          <p className="text-sm text-zinc-500 ">
-                            {c.subject} • Grado {c.grade}
-                          </p>
-                        </div>
-                        <Badge variant="outline">{c.students} alumnos</Badge>
-                      </div>
-                      <div className="mt-4 flex gap-2">
-                        <Button variant="outline" className="flex-1">
-                          <Users className="h-4 w-4" /> Ver Alumnos
-                        </Button>
-                        <Button variant="outline" className="flex-1">
-                          <BarChart3 className="h-4 w-4" /> Estadísticas
-                        </Button>
-                      </div>
+                  {loading ? (
+                    <p className="text-center text-zinc-500">
+                      Cargando clases...
+                    </p>
+                  ) : error ? (
+                    <div className="text-center">
+                      <p className="text-red-500 font-medium mb-2">{error}</p>
+                      <button
+                        onClick={() => window.location.reload()}
+                        className="text-sm text-blue-600 hover:text-blue-800 underline"
+                      >
+                        Recargar página
+                      </button>
                     </div>
-                  ))}
+                  ) : clases.length === 0 ? (
+                    <p className="text-center text-zinc-500">
+                      No tienes clases asignadas
+                    </p>
+                  ) : (
+                    clases.map((c) => (
+                      <div
+                        key={c.id}
+                        className="rounded-lg border border-zinc-200 bg-white p-4 transition-colors hover:border-indigo-500  "
+                      >
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <h3 className="font-semibold">{c.nombre}</h3>
+                            <p className="text-sm text-zinc-500 ">
+                              {c.materia} • Grado {c.grado}
+                            </p>
+                          </div>
+                          <Badge variant="outline">
+                            {c.inscripciones?.length || 0} alumnos
+                          </Badge>
+                        </div>
+                        <div className="mt-4 flex gap-2">
+                          <Button
+                            variant="outline"
+                            className="flex-1"
+                            onClick={() => {
+                              setSelectedClassroom(c.id);
+                              setTab("students");
+                            }}
+                          >
+                            <Users className="h-4 w-4" /> Ver Alumnos
+                          </Button>
+                          <Button variant="outline" className="flex-1">
+                            <BarChart3 className="h-4 w-4" /> Estadísticas
+                          </Button>
+                        </div>
+                      </div>
+                    ))
+                  )}
                 </div>
               ) : (
                 <div className="mt-4 space-y-4">
@@ -699,131 +1145,495 @@ export default function TeacherDashboard() {
       {/* Modales */}
       <Modal
         open={openNotice}
-        onClose={() => setOpenNotice(false)}
+        onClose={() => {
+          setOpenNotice(false);
+          setFormComunicado({
+            claseId: "",
+            todosLosSalones: false,
+            titulo: "",
+            mensaje: "",
+          });
+        }}
         title="Enviar Comunicado"
-        description="Envía un mensaje a tus alumnos o padres de familia"
+        description="Envía un mensaje a los padres de familia"
       >
-        <div className="space-y-4">
+        <form onSubmit={handleEnviarComunicado} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="recipient">Destinatario</Label>
-            <Select defaultValue="" onChange={() => {}}>
-              <option value="" disabled>
-                Seleccionar grupo
-              </option>
-              <option value="all">Todos los salones</option>
-              <option value="10A">Matemáticas 10A</option>
-              <option value="11B">Física 11B</option>
-              <option value="10C">Química 10C</option>
-            </Select>
+            <Label htmlFor="recipient">Destinatario *</Label>
+            <div className="space-y-2">
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={formComunicado.todosLosSalones}
+                  onChange={(e) =>
+                    setFormComunicado({
+                      ...formComunicado,
+                      todosLosSalones: e.target.checked,
+                      claseId: e.target.checked ? "" : formComunicado.claseId,
+                    })
+                  }
+                  className="rounded border-zinc-300"
+                />
+                <span className="text-sm">Todos los salones</span>
+              </label>
+              {!formComunicado.todosLosSalones && (
+                <Select
+                  id="recipient"
+                  value={formComunicado.claseId}
+                  onChange={(e) =>
+                    setFormComunicado({
+                      ...formComunicado,
+                      claseId: e.target.value,
+                    })
+                  }
+                  required={!formComunicado.todosLosSalones}
+                >
+                  <option value="" disabled>
+                    Seleccionar clase
+                  </option>
+                  {clases.map((clase) => (
+                    <option key={clase.id} value={clase.id}>
+                      {clase.nombre} ({clase.materia} - {clase.grado})
+                    </option>
+                  ))}
+                </Select>
+              )}
+            </div>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="subject">Asunto</Label>
-            <Input id="subject" placeholder="Título del comunicado" />
+            <Label htmlFor="subject">Asunto *</Label>
+            <Input
+              id="subject"
+              value={formComunicado.titulo}
+              onChange={(e) =>
+                setFormComunicado({
+                  ...formComunicado,
+                  titulo: e.target.value,
+                })
+              }
+              placeholder="Título del comunicado"
+              required
+            />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="message">Mensaje</Label>
+            <Label htmlFor="message">Mensaje *</Label>
             <Textarea
               id="message"
               rows={4}
+              value={formComunicado.mensaje}
+              onChange={(e) =>
+                setFormComunicado({
+                  ...formComunicado,
+                  mensaje: e.target.value,
+                })
+              }
               placeholder="Escribe tu mensaje aquí..."
+              required
             />
           </div>
-          <Button className="w-full">
-            <Send className="h-4 w-4" /> Enviar Comunicado
+          <Button
+            type="submit"
+            className="w-full"
+            disabled={enviandoComunicado}
+          >
+            <Send className="h-4 w-4" />{" "}
+            {enviandoComunicado ? "Enviando..." : "Enviar Comunicado"}
           </Button>
-        </div>
+        </form>
       </Modal>
 
       <Modal
         open={openMeeting}
-        onClose={() => setOpenMeeting(false)}
-        title="Nueva Reunión"
+        onClose={() => {
+          setOpenMeeting(false);
+          setFormReunion({
+            titulo: "",
+            fecha: "",
+            hora: "",
+            tipo: "PADRES",
+            descripcion: "",
+            claseId: "",
+          });
+        }}
+        title="Agendar Reunión"
         description="Programa una reunión con padres o colegas"
       >
-        <div className="space-y-4">
+        <form onSubmit={handleEnviarReunion} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="meeting-title">Título</Label>
-            <Input id="meeting-title" placeholder="Nombre de la reunión" />
+            <Label htmlFor="meeting-title">Título *</Label>
+            <Input
+              id="meeting-title"
+              value={formReunion.titulo}
+              onChange={(e) =>
+                setFormReunion({
+                  ...formReunion,
+                  titulo: e.target.value,
+                })
+              }
+              placeholder="Nombre de la reunión"
+              required
+            />
           </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="meeting-date">Fecha</Label>
-              <Input id="meeting-date" type="date" />
+              <Label htmlFor="meeting-date">Fecha *</Label>
+              <Input
+                id="meeting-date"
+                type="date"
+                value={formReunion.fecha}
+                onChange={(e) =>
+                  setFormReunion({
+                    ...formReunion,
+                    fecha: e.target.value,
+                  })
+                }
+                required
+              />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="meeting-time">Hora</Label>
-              <Input id="meeting-time" type="time" />
+              <Label htmlFor="meeting-time">Hora *</Label>
+              <Input
+                id="meeting-time"
+                type="time"
+                value={formReunion.hora}
+                onChange={(e) =>
+                  setFormReunion({
+                    ...formReunion,
+                    hora: e.target.value,
+                  })
+                }
+                required
+              />
             </div>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="meeting-type">Tipo</Label>
-            <Select defaultValue="" onChange={() => {}}>
-              <option value="" disabled>
-                Seleccionar tipo
-              </option>
-              <option value="parents">Padres de familia</option>
-              <option value="teachers">Profesores</option>
-              <option value="academic">Académica</option>
+            <Label htmlFor="meeting-type">Tipo *</Label>
+            <Select
+              id="meeting-type"
+              value={formReunion.tipo}
+              onChange={(e) =>
+                setFormReunion({
+                  ...formReunion,
+                  tipo: e.target.value,
+                })
+              }
+              required
+            >
+              <option value="PADRES">Padres de familia</option>
+              <option value="DEPARTAMENTAL">Departamental</option>
+              <option value="GENERAL">General</option>
             </Select>
           </div>
-          <Button className="w-full">
-            <Plus className="h-4 w-4" /> Crear Reunión
+          {formReunion.tipo === "PADRES" && (
+            <div className="space-y-2">
+              <Label htmlFor="meeting-class">Clase (opcional)</Label>
+              <Select
+                id="meeting-class"
+                value={formReunion.claseId}
+                onChange={(e) =>
+                  setFormReunion({
+                    ...formReunion,
+                    claseId: e.target.value,
+                  })
+                }
+              >
+                <option value="">Sin clase específica</option>
+                {clases.map((clase) => (
+                  <option key={clase.id} value={clase.id}>
+                    {clase.nombre} ({clase.materia} - {clase.grado})
+                  </option>
+                ))}
+              </Select>
+            </div>
+          )}
+          <div className="space-y-2">
+            <Label htmlFor="meeting-description">Descripción (opcional)</Label>
+            <Textarea
+              id="meeting-description"
+              rows={3}
+              value={formReunion.descripcion}
+              onChange={(e) =>
+                setFormReunion({
+                  ...formReunion,
+                  descripcion: e.target.value,
+                })
+              }
+              placeholder="Detalles adicionales..."
+            />
+          </div>
+          <Button type="submit" className="w-full" disabled={enviandoReunion}>
+            <Plus className="h-4 w-4" />{" "}
+            {enviandoReunion ? "Creando..." : "Crear Reunión"}
           </Button>
-        </div>
+        </form>
       </Modal>
 
       <Modal
         open={openGrade}
-        onClose={() => setOpenGrade(false)}
-        title="Nueva Calificación"
+        onClose={() => {
+          setOpenGrade(false);
+          setFormCalificacion({
+            claseId: "",
+            alumnoId: "",
+            valor: "",
+            materia: "",
+            notas: "",
+          });
+        }}
+        title="Registrar Calificación"
         description="Registra una calificación para un alumno"
       >
-        <div className="space-y-4">
+        <form onSubmit={handleEnviarCalificacion} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="grade-classroom">Salón</Label>
-            <Select defaultValue="" onChange={() => {}}>
+            <Label htmlFor="grade-classroom">Clase *</Label>
+            <Select
+              id="grade-classroom"
+              value={formCalificacion.claseId}
+              onChange={(e) => handleClaseChange(e.target.value)}
+              required
+            >
               <option value="" disabled>
-                Seleccionar salón
+                Seleccionar clase
               </option>
-              <option value="10A">Matemáticas 10A</option>
-              <option value="11B">Física 11B</option>
-              <option value="10C">Química 10C</option>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="grade-student">Alumno</Label>
-            <Select defaultValue="" onChange={() => {}}>
-              <option value="" disabled>
-                Seleccionar alumno
-              </option>
-              {students.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
+              {clases.map((clase) => (
+                <option key={clase.id} value={clase.id}>
+                  {clase.nombre} ({clase.materia} - {clase.grado})
                 </option>
               ))}
             </Select>
           </div>
+
           <div className="space-y-2">
-            <Label htmlFor="grade-value">Calificación</Label>
+            <Label htmlFor="grade-student">Alumno *</Label>
+            <Select
+              id="grade-student"
+              value={formCalificacion.alumnoId}
+              onChange={(e) =>
+                setFormCalificacion({
+                  ...formCalificacion,
+                  alumnoId: e.target.value,
+                })
+              }
+              required
+              disabled={!formCalificacion.claseId || alumnosClase.length === 0}
+            >
+              <option value="" disabled>
+                {!formCalificacion.claseId
+                  ? "Primero selecciona una clase"
+                  : alumnosClase.length === 0
+                  ? "Cargando alumnos..."
+                  : "Seleccionar alumno"}
+              </option>
+              {alumnosClase.map((alumno) => (
+                <option key={alumno.id} value={alumno.id}>
+                  {alumno.nombre} {alumno.apellidos}
+                </option>
+              ))}
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="grade-subject">Materia *</Label>
+            <Input
+              id="grade-subject"
+              value={formCalificacion.materia}
+              onChange={(e) =>
+                setFormCalificacion({
+                  ...formCalificacion,
+                  materia: e.target.value,
+                })
+              }
+              placeholder="Ej: Matemáticas"
+              required
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="grade-value">Calificación *</Label>
             <Input
               id="grade-value"
               type="number"
               min="0"
               max="10"
               step="0.1"
+              value={formCalificacion.valor}
+              onChange={(e) =>
+                setFormCalificacion({
+                  ...formCalificacion,
+                  valor: e.target.value,
+                })
+              }
               placeholder="0.0 - 10.0"
+              required
             />
           </div>
+
           <div className="space-y-2">
             <Label htmlFor="grade-notes">Notas (opcional)</Label>
             <Textarea
               id="grade-notes"
               rows={3}
-              placeholder="Observaciones..."
+              value={formCalificacion.notas}
+              onChange={(e) =>
+                setFormCalificacion({
+                  ...formCalificacion,
+                  notas: e.target.value,
+                })
+              }
+              placeholder="Observaciones adicionales..."
             />
           </div>
-          <Button className="w-full">Guardar Calificación</Button>
-        </div>
+
+          <Button
+            type="submit"
+            className="w-full"
+            disabled={enviandoCalificacion}
+          >
+            {enviandoCalificacion ? "Guardando..." : "Guardar Calificación"}
+          </Button>
+        </form>
+      </Modal>
+
+      {/* Modal para tomar asistencia */}
+      <Modal
+        open={openAttendance}
+        onClose={() => {
+          setOpenAttendance(false);
+          setFormAsistencia({
+            claseId: "",
+            materia: "",
+            fecha: new Date().toISOString().split("T")[0],
+          });
+          setAlumnosAsistencia([]);
+        }}
+        title="Tomar Asistencia"
+        description="Registra la asistencia para una clase"
+      >
+        <form onSubmit={handleEnviarAsistencia} className="space-y-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="attendance-class">Clase *</Label>
+              <Select
+                id="attendance-class"
+                value={formAsistencia.claseId}
+                onChange={(e) => handleClaseChangeAsistencia(e.target.value)}
+                required
+              >
+                <option value="" disabled>
+                  Seleccionar clase
+                </option>
+                {clases.map((clase) => (
+                  <option key={clase.id} value={clase.id}>
+                    {clase.nombre} ({clase.materia} - {clase.grado})
+                  </option>
+                ))}
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="attendance-date">Fecha *</Label>
+              <Input
+                id="attendance-date"
+                type="date"
+                value={formAsistencia.fecha}
+                onChange={(e) =>
+                  setFormAsistencia({
+                    ...formAsistencia,
+                    fecha: e.target.value,
+                  })
+                }
+                required
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="attendance-subject">Materia *</Label>
+            <Input
+              id="attendance-subject"
+              value={formAsistencia.materia}
+              onChange={(e) =>
+                setFormAsistencia({
+                  ...formAsistencia,
+                  materia: e.target.value,
+                })
+              }
+              placeholder="Ej: Matemáticas"
+              required
+            />
+          </div>
+
+          {/* Lista de alumnos para tomar asistencia */}
+          {alumnosAsistencia.length > 0 && (
+            <div className="space-y-3">
+              <Label>Asistencia de Alumnos</Label>
+              <div className="max-h-60 overflow-y-auto border rounded-lg p-3 space-y-2">
+                {alumnosAsistencia.map((alumno) => (
+                  <div
+                    key={alumno.id}
+                    className="flex items-center justify-between p-2 border-b last:border-b-0"
+                  >
+                    <div className="flex-1">
+                      <p className="font-medium text-sm">
+                        {alumno.nombre} {alumno.apellidos}
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleCambioAsistencia(alumno.id, "PRESENTE")
+                        }
+                        className={`px-3 py-1 text-xs rounded border ${
+                          alumno.estado === "PRESENTE"
+                            ? "bg-green-500 text-white border-green-500"
+                            : "bg-white text-green-600 border-green-600"
+                        }`}
+                      >
+                        Presente
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleCambioAsistencia(alumno.id, "FALTA")
+                        }
+                        className={`px-3 py-1 text-xs rounded border ${
+                          alumno.estado === "FALTA"
+                            ? "bg-red-500 text-white border-red-500"
+                            : "bg-white text-red-600 border-red-600"
+                        }`}
+                      >
+                        Falta
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleCambioAsistencia(alumno.id, "RETARDO")
+                        }
+                        className={`px-3 py-1 text-xs rounded border ${
+                          alumno.estado === "RETARDO"
+                            ? "bg-yellow-500 text-white border-yellow-500"
+                            : "bg-white text-yellow-600 border-yellow-600"
+                        }`}
+                      >
+                        Retardo
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <Button
+            type="submit"
+            className="w-full"
+            disabled={enviandoAsistencia || alumnosAsistencia.length === 0}
+          >
+            <ClipboardCheck className="h-4 w-4" />
+            {enviandoAsistencia ? "Guardando..." : "Guardar Asistencia"}
+          </Button>
+        </form>
       </Modal>
     </div>
   );

@@ -1,0 +1,211 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlserver"
+  url      = env("DATABASE_URL")
+}
+
+// SQL Server no soporta enums nativos, usamos String con @@map
+// Los valores se validan en la aplicación con Zod
+
+model Usuario {
+  id            String   @id @default(uuid())
+  email         String   @unique @db.VarChar(255)
+  password      String   @db.VarChar(255)
+  nombre        String   @db.VarChar(100)
+  apellidos     String?  @db.VarChar(100)
+  telefono      String?  @db.VarChar(20)
+  imgProfile    String?  @db.VarChar(500) // Imagen de perfil para maestros y padres
+  role          String   @default("PADRE_TUTOR") @db.VarChar(20) // PADRE_TUTOR, MAESTRO, ADMINISTRADOR
+  activo        Boolean  @default(true)
+  modoAnonimo   Boolean  @default(false) // Para maestros que quieren ocultar su identidad
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  // Relaciones
+  hijos         Alumno[] @relation("PadreHijo")
+  clases        Clase[]  @relation("ProfesorClase")
+  notificaciones Notificacion[]
+  incidencias   Incidencia[]
+  historialNotificaciones HistorialNotificacion[] @relation("NotificacionesEnviadas")
+  plantillasCreadas Plantilla[] @relation("PlantillasCreadas")
+  reunionesCreadas Reunion[] @relation("ReunionesCreadas")
+  
+  @@map("usuarios")
+}
+
+model Alumno {
+  id              String   @id @default(uuid())
+  nombre          String   @db.VarChar(100)
+  apellidos       String   @db.VarChar(100)
+  nivel           String   @db.VarChar(20) // SECUNDARIA o PREPARATORIA
+  grado           String   @db.VarChar(50)
+  claveAlumno     String?  @db.VarChar(50) // Para secundaria
+  numeroControl   String?  @db.VarChar(50) // Para preparatoria
+  sexo            String   @db.VarChar(10)
+  imgProfile      String?  @db.VarChar(500)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  // Relaciones
+  padreTutorId    String
+  padreTutor      Usuario  @relation("PadreHijo", fields: [padreTutorId], references: [id], onDelete: Cascade)
+  inscripciones   Inscripcion[]
+  asistencias     Asistencia[]
+  calificaciones  Calificacion[]
+  incidencias     Incidencia[]
+  
+  @@map("alumnos")
+}
+
+model Clase {
+  id          String   @id @default(uuid())
+  nombre      String   @db.VarChar(100)
+  materia     String   @db.VarChar(100)
+  grado       String   @db.VarChar(50)
+  horario     String   @db.VarChar(100)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relaciones
+  profesorId  String
+  profesor    Usuario  @relation("ProfesorClase", fields: [profesorId], references: [id], onDelete: Cascade)
+  inscripciones Inscripcion[]
+  asistencias Asistencia[]
+  calificaciones Calificacion[]
+  incidencias Incidencia[]
+  reuniones Reunion[]
+  
+  @@map("clases")
+}
+
+model Inscripcion {
+  id        String   @id @default(uuid())
+  alumnoId  String
+  claseId   String
+  alumno    Alumno   @relation(fields: [alumnoId], references: [id], onDelete: Cascade)
+  clase     Clase    @relation(fields: [claseId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  
+  @@unique([alumnoId, claseId])
+  @@map("inscripciones")
+}
+
+model Asistencia {
+  id        String   @id @default(uuid())
+  fecha     DateTime
+  estado    String   @db.VarChar(20) // PRESENTE, AUSENTE, RETRASO
+  alumnoId  String
+  claseId   String
+  alumno    Alumno   @relation(fields: [alumnoId], references: [id], onDelete: Cascade)
+  clase     Clase    @relation(fields: [claseId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  
+  @@unique([alumnoId, claseId, fecha])
+  @@map("asistencias")
+}
+
+model Calificacion {
+  id        String   @id @default(uuid())
+  valor     Float
+  materia   String   @db.VarChar(100)
+  fecha     DateTime @default(now())
+  notas     String?  @db.NVarChar(Max)
+  alumnoId  String
+  claseId   String
+  alumno    Alumno   @relation(fields: [alumnoId], references: [id], onDelete: Cascade)
+  clase     Clase    @relation(fields: [claseId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  
+  @@map("calificaciones")
+}
+
+model Notificacion {
+  id        String   @id @default(uuid())
+  titulo    String   @db.VarChar(200)
+  mensaje   String   @db.NVarChar(Max)
+  tipo      String   @db.VarChar(50)
+  icono     String?  @db.VarChar(10)
+  leida     Boolean  @default(false)
+  usuarioId String
+  usuario   Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  
+  @@map("notificaciones")
+}
+
+model Reunion {
+  id          String   @id @default(uuid())
+  titulo      String   @db.VarChar(200)
+  fecha       DateTime
+  hora        String   @db.VarChar(10)
+  tipo        String   @db.VarChar(50) // PADRES, DEPARTAMENTAL, GENERAL
+  descripcion String?  @db.NVarChar(Max)
+  claseId     String?
+  clase       Clase?   @relation(fields: [claseId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  creadoPorId String
+  creadoPor   Usuario  @relation("ReunionesCreadas", fields: [creadoPorId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@map("reuniones")
+}
+
+// Modelo para Incidencias (reportes de maestros)
+model Incidencia {
+  id          String   @id @default(uuid())
+  titulo      String   @db.VarChar(200)
+  descripcion String   @db.NVarChar(Max)
+  tipo        String   @db.VarChar(50) // CONDUCTA, ACADEMICA, DISCIPLINARIA, OTRA
+  severidad   String   @db.VarChar(20) // BAJA, MEDIA, ALTA, CRITICA
+  estado      String   @default("PENDIENTE") @db.VarChar(20) // PENDIENTE, EN_REVISION, RESUELTA, CERRADA
+  alumnoId    String
+  alumno      Alumno   @relation(fields: [alumnoId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  maestroId   String
+  maestro     Usuario  @relation(fields: [maestroId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  claseId     String?
+  clase       Clase?   @relation(fields: [claseId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  fecha       DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@map("incidencias")
+}
+
+// Modelo para Plantillas de Notificaciones
+model Plantilla {
+  id          String   @id @default(uuid())
+  nombre      String   @db.VarChar(200)
+  asunto      String   @db.VarChar(300)
+  contenido   String   @db.NVarChar(Max)
+  tipo        String   @db.VarChar(50) // ASISTENCIA, CALIFICACION, INCIDENCIA, GENERAL
+  canal       String   @db.VarChar(20) // WHATSAPP, EMAIL, AMBOS
+  activa      Boolean  @default(true)
+  creadoPorId String?
+  creadoPor   Usuario? @relation("PlantillasCreadas", fields: [creadoPorId], references: [id], onDelete: SetNull)
+  historialNotificaciones HistorialNotificacion[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@map("plantillas")
+}
+
+// Modelo para Historial de Notificaciones Enviadas
+model HistorialNotificacion {
+  id          String   @id @default(uuid())
+  plantillaId String?
+  plantilla   Plantilla? @relation(fields: [plantillaId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  destinatarioId String
+  destinatario Usuario @relation("NotificacionesEnviadas", fields: [destinatarioId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  asunto      String   @db.VarChar(300)
+  mensaje     String   @db.NVarChar(Max)
+  canal       String   @db.VarChar(20) // WHATSAPP, EMAIL, AMBOS
+  estado      String   @db.VarChar(20) // ENVIADA, FALLIDA, PENDIENTE
+  error       String?  @db.NVarChar(Max)
+  enviadoEn   DateTime @default(now())
+  leidoEn     DateTime?
+  
+  @@map("historial_notificaciones")
+}
+
+// Relación entre Plantilla e HistorialNotificacion
+

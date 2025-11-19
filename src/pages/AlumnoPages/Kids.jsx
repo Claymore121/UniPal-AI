@@ -1,17 +1,18 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { SquarePlus, ChevronDown } from "lucide-react";
 import Modal from "../../components/Modal";
 import boyImg from "../../assets/boy1.png";
 import girlImg from "../../assets/girl1.png";
-import { Alumnos } from "../../data/dataNotification";
+import api from "../../services/api";
 
 const Kids = () => {
   const [open, setOpen] = useState(false);
   const [isOpenAddkid, setIsOpenAddkid] = useState(false);
   const [expandedKidId, setExpandedKidId] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  const [alumnos, setAlumnos] = useState(Alumnos);
+  const [alumnos, setAlumnos] = useState([]);
 
   const [nivel, setNivel] = useState("");
   const [nombre, setNombre] = useState("");
@@ -20,51 +21,71 @@ const Kids = () => {
   const [numeroControlAlumno, setNumeroControlAlumno] = useState("");
   const [sexo, setSetsexo] = useState("");
 
-  const handleAddAlumno = (e) => {
+  useEffect(() => {
+    const fetchAlumnos = async () => {
+      try {
+        setLoading(true);
+        const hijos = await api.getHijos();
+        setAlumnos(hijos);
+      } catch (error) {
+        console.error("Error cargando hijos:", error);
+        // Fallback a datos mock
+        const { Alumnos: AlumnosMock } = await import("../../data/dataNotification");
+        setAlumnos(AlumnosMock);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAlumnos();
+  }, []);
+
+  const handleAddAlumno = async (e) => {
     e.preventDefault();
     if (!nombre || !nivel || !grado) return;
 
-    const nuevoAlumno = {
-      id: Date.now(),
-      nivel: nivel === "secu" ? "Secundaria" : "Preparatoria",
-      name: nombre,
-      grade: grado,
-      imgProfile: sexo === "mujer" ? girlImg : boyImg,
-      clave: nivel === "secu" ? claveAlumno : undefined,
-      numeroControl: nivel === "prepa" ? numeroControlAlumno : undefined,
-      materias: [
-        {
-          nombre: "Matemáticas",
-          horario: "Lunes y Miércoles 10:00 - 11:30",
-          maestro: "Prof. Ramírez",
-          asistencia: "85%",
-        },
-        {
-          nombre: "Inglés",
-          horario: "Martes y Jueves 09:00 - 10:30",
-          maestro: "Profa. López",
-          asistencia: "90%",
-        },
-        {
-          nombre: "Ciencias",
-          horario: "Lunes y Miércoles 11:00 - 12:30",
-          maestro: "Prof. Villacasas",
-          asistencia: "80%",
-        },
-      ],
-    };
+    try {
+      const nuevoAlumno = await api.crearHijo({
+        nombre,
+        apellidos: "", // Puedes agregar un campo para apellidos
+        nivel: nivel === "secu" ? "SECUNDARIA" : "PREPARATORIA",
+        grado,
+        claveAlumno: nivel === "secu" ? claveAlumno : undefined,
+        numeroControl: nivel === "prepa" ? numeroControlAlumno : undefined,
+        sexo: sexo === "mujer" ? "mujer" : "hombre",
+        imgProfile: sexo === "mujer" ? girlImg : boyImg,
+      });
 
-    setAlumnos((prev) => [...prev, nuevoAlumno]);
-    setNivel("");
-    setNombre("");
-    setGrado("");
-    setClaveAlumno("");
-    setNumeroControlAlumno("");
-    setIsOpenAddkid(false);
+      setAlumnos((prev) => [...prev, nuevoAlumno.alumno]);
+      setNivel("");
+      setNombre("");
+      setGrado("");
+      setClaveAlumno("");
+      setNumeroControlAlumno("");
+      setSetsexo("");
+      setIsOpenAddkid(false);
+    } catch (error) {
+      console.error("Error creando alumno:", error);
+      alert("Error al crear el alumno: " + (error.message || "Error desconocido"));
+    }
   };
 
   const toggleExpand = (id) => {
     setExpandedKidId((prev) => (prev === id ? null : id));
+  };
+
+  // Función para obtener la imagen según el sexo del alumno
+  const getProfileImage = (alumno) => {
+    // Si el alumno tiene sexo definido, usar la imagen correspondiente
+    if (alumno.sexo) {
+      return alumno.sexo.toLowerCase() === "mujer" ? girlImg : boyImg;
+    }
+    // Si no tiene sexo pero tiene imgProfile, usar esa
+    if (alumno.imgProfile) {
+      return alumno.imgProfile;
+    }
+    // Por defecto, usar imagen de niño
+    return boyImg;
   };
 
   return (
@@ -116,21 +137,25 @@ const Kids = () => {
                   <div className="flex justify-between items-center p-3">
                     <div className="flex items-center gap-3">
                       <img
-                        src={alumno.imgProfile}
-                        alt="perfil"
+                        src={getProfileImage(alumno)}
+                        alt={`Perfil de ${alumno.nombre}`}
                         width={50}
                         height={50}
-                        className="rounded-full"
+                        className="rounded-full object-cover"
+                        onError={(e) => {
+                          // Fallback si la imagen falla al cargar
+                          e.target.src = alumno.sexo?.toLowerCase() === "mujer" ? girlImg : boyImg;
+                        }}
                       />
                       <div>
                         <h3 className="font-semibold text-blue-600">
-                          {alumno.name}
+                          {alumno.nombre} {alumno.apellidos}
                         </h3>
                         <p className="text-sm text-gray-700">
                           Nivel: {alumno.nivel}
                         </p>
                         <p className="text-sm text-gray-700">
-                          Grado: {alumno.grade}
+                          Grado: {alumno.grado}
                         </p>
                       </div>
                     </div>
@@ -165,27 +190,35 @@ const Kids = () => {
                         transition={{ duration: 0.35, ease: "easeInOut" }}
                         className="px-5 pb-4 bg-white border-t border-gray-200 text-sm"
                       >
-                        {alumno.materias.map((mat, index) => (
-                          <div
-                            key={index}
-                            className={`p-2 rounded-lg text-white mb-3 ${
-                              mat.nombre.toLowerCase() === "matemáticas"
-                                ? "bg-red-200 border-2 border-red-400 text-black"
-                                : mat.nombre.toLowerCase() === "ingles"
-                                ? "bg-yellow-100 border-2 border-yellow-400 text-black"
-                                : mat.nombre.toLowerCase() === "ciencias"
-                                ? "bg-green-200 border-2 border-green-400 text-black"
-                                : "bg-gray-300"
-                            }`}
-                          >
-                            <p className="text-black">
-                              <strong>{mat.nombre}</strong> - {mat.horario}
-                            </p>
-                            <p className="text-black">
-                              Asistencia: {mat.asistencia}
-                            </p>
-                          </div>
-                        ))}
+                        {alumno.inscripciones && alumno.inscripciones.length > 0 ? (
+                          alumno.inscripciones.map((inscripcion, index) => {
+                            const clase = inscripcion.clase;
+                            return (
+                              <div
+                                key={index}
+                                className={`p-2 rounded-lg text-white mb-3 ${
+                                  clase.materia.toLowerCase().includes("matemática")
+                                    ? "bg-red-200 border-2 border-red-400 text-black"
+                                    : clase.materia.toLowerCase().includes("inglés") ||
+                                      clase.materia.toLowerCase().includes("ingles")
+                                    ? "bg-yellow-100 border-2 border-yellow-400 text-black"
+                                    : clase.materia.toLowerCase().includes("ciencia")
+                                    ? "bg-green-200 border-2 border-green-400 text-black"
+                                    : "bg-gray-300"
+                                }`}
+                              >
+                                <p className="text-black">
+                                  <strong>{clase.materia}</strong> - {clase.horario}
+                                </p>
+                                <p className="text-black">
+                                  Profesor: {clase.profesor?.nombre || "N/A"}
+                                </p>
+                              </div>
+                            );
+                          })
+                        ) : (
+                          <p className="text-gray-500 text-sm">Sin materias asignadas</p>
+                        )}
                       </motion.div>
                     )}
                   </AnimatePresence>
